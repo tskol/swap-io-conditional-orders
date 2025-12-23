@@ -1,8 +1,7 @@
 #![allow(clippy::too_many_arguments)]
 use std::cmp;
-pub use pythnet_sdk::messages::{FeedId, PriceFeedMessage};
 use pyth_solana_receiver_sdk::price_update::{get_feed_id_from_hex, PriceUpdateV2};
-use solana_clock::Clock as SolanaClock;
+// use solana_clock::Clock as SolanaClock;
 
 use anchor_lang::prelude::*;
 use solana_program::clock;
@@ -504,24 +503,16 @@ fn update_take_child_order_accounting_and_tips(
         let input_price_update = input_price_update.ok_or(LimoError::InvalidAccount)?;
         let output_price_update = output_price_update.ok_or(LimoError::InvalidAccount)?;
         let anchor_clock = Clock::get()?;
-        // Convert anchor_lang::prelude::Clock to solana_clock::Clock
-        let solana_clock = SolanaClock {
-            slot: anchor_clock.slot,
-            epoch_start_timestamp: anchor_clock.epoch_start_timestamp,
-            epoch: anchor_clock.epoch,
-            leader_schedule_epoch: anchor_clock.leader_schedule_epoch,
-            unix_timestamp: anchor_clock.unix_timestamp,
-        };
 
         let input_feed_id = get_feed_id_from_hex(&input_oracle_pool.oracle_feed_id)
             .map_err(|_| LimoError::InvalidAccount)?;
         let input_price = input_price_update
-            .get_price_no_older_than(&solana_clock, input_oracle_pool.oracle_maximum_age, &input_feed_id)
+            .get_price_no_older_than(&anchor_clock, input_oracle_pool.oracle_maximum_age, &input_feed_id)
             .map_err(|_| LimoError::InvalidAccount)?;
         let output_feed_id = get_feed_id_from_hex(&output_oracle_pool.oracle_feed_id)
             .map_err(|_| LimoError::InvalidAccount)?;
         let output_price = output_price_update
-            .get_price_no_older_than(&solana_clock, output_oracle_pool.oracle_maximum_age, &output_feed_id)
+            .get_price_no_older_than(&anchor_clock, output_oracle_pool.oracle_maximum_age, &output_feed_id)
             .map_err(|_| LimoError::InvalidAccount)?;
 
         let mut expected_output_usd_price = (u128::from(input_to_send_to_taker)

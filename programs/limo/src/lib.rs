@@ -199,6 +199,12 @@ pub mod limo {
 #[error_code]
 #[derive(Error, PartialEq, Eq, TryFromPrimitive)]
 pub enum LimoError {
+    #[msg("TPSL not enabled")]
+    TPSLNotEnabled,
+
+    #[msg("TPSL min distance not met")]
+    TPSLMinDistanceNotMet,
+
     #[msg("Price too high")]
     PriceTooHigh,
 

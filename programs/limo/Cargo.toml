@@ -40,4 +40,4 @@ uint = "0.9.5"
 express-relay = { version = "0.7.0", features = [
     "no-entrypoint",
 ] }
-
+pyth-solana-receiver-sdk = "=0.4.0"

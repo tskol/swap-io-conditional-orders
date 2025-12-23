@@ -171,8 +171,17 @@ pub struct GlobalConfig {
     pub flash_take_order_blocked: u8,
     pub new_orders_blocked: u8,
     pub orders_taking_blocked: u8,
+    pub tp_sl_enabled: u8,
+    pub padding3: [u8; 1],
 
     pub host_fee_bps: u16,
+    pub create_order_fee_bps: u16,
+    pub sl_max_upward_deviation_bps: u16,
+    pub tp_sl_min_distance_bps: u16,
+    pub parent_fill_fee_keeper_bps: u16,
+    pub parent_fill_fee_protocol_bps: u16,
+    pub tp_sl_child_fee_keeper_bps: u16,
+    pub tp_sl_child_fee_protocol_bps: u16,
 
     pub padding0: [u8; 2],
     pub order_close_delay_seconds: u64,
@@ -188,16 +197,7 @@ pub struct GlobalConfig {
     pub admin_authority_cached: Pubkey,
     pub txn_fee_cost: u64,
     pub ata_creation_cost: u64,
-
-    pub tp_sl_enabled: bool,
     pub oracle_max_staleness_seconds: u64,
-    pub create_order_fee_bps: u16,
-    pub sl_max_upward_deviation_bps: u16,
-    pub tp_sl_min_distance_bps: u16,
-    pub parent_fill_fee_keeper_bps: u16,
-    pub parent_fill_fee_protocol_bps: u16,
-    pub tp_sl_child_fee_keeper_bps: u16,
-    pub tp_sl_child_fee_protocol_bps: u16,
 
     pub padding2: [u64; 241],
 }
@@ -226,7 +226,7 @@ impl Default for GlobalConfig {
             admin_authority_cached: Pubkey::default(),
             emergency_mode: 0,
             ata_creation_cost: 0,
-            tp_sl_enabled: true,
+            tp_sl_enabled: 1,
             oracle_max_staleness_seconds: 30,
             create_order_fee_bps: 0,
             sl_max_upward_deviation_bps: 0,
@@ -239,6 +239,7 @@ impl Default for GlobalConfig {
             padding0: [0; 2],
             padding1: [0; 9],
             padding2: [0; 241],
+            padding3: [0; 1],
         }
     }
 }

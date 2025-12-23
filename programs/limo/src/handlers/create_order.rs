@@ -5,6 +5,7 @@ use solana_program::{program::invoke, system_instruction};
 use crate::{
     operations, seeds,
     state::{GlobalConfig, Order},
+    utils::consts::FULL_BPS,
     token_operations::transfer_from_user_to_token_account,
     utils::constraints::token_2022::validate_token_extensions,
     LimoError, OrderDisplay, OrderType,
@@ -34,12 +35,13 @@ pub fn handler_create_order(
     require!(parsed_order_type != OrderType::LimitTP && parsed_order_type != OrderType::LimitSL, LimoError::OrderTypeInvalid);
 
     let gc_state = ctx.accounts.global_config.load()?;
+    let lamports = gc_state.ata_creation_cost + gc_state.txn_fee_cost;
     if parsed_order_type == OrderType::Vanilla {
         require!(tp_output_amount == 0 && sl_output_amount == 0, LimoError::OrderParametersInvalid);
     } else {
-        require!(gc_state.tp_sl_enabled, LimoError::TPSLNotEnabled);
+        require!(gc_state.tp_sl_enabled == 1, LimoError::TPSLNotEnabled);
         require!(tp_output_amount > 0 || sl_output_amount > 0, LimoError::OrderParametersInvalid);
-        let tp_sl_min_distance = output_amount.checked_mul(gc_state.tp_sl_min_distance_bps).unwrap() / FULL_BPS;
+        let tp_sl_min_distance = output_amount.checked_mul(gc_state.tp_sl_min_distance_bps.try_into().unwrap()).unwrap() / FULL_BPS;
         if tp_output_amount > 0 {
             require!(tp_output_amount >= tp_sl_min_distance, LimoError::TPSLMinDistanceNotMet);
         }
@@ -47,6 +49,7 @@ pub fn handler_create_order(
             require!(sl_output_amount >= tp_sl_min_distance, LimoError::TPSLMinDistanceNotMet);
         }
     }
+    drop(gc_state);
 
     let order = &mut ctx.accounts.order.load_init()?;
     let clock = Clock::get()?;
@@ -120,9 +123,6 @@ pub fn handler_create_order(
         ctx.accounts.input_mint.decimals,
     )?;
 
-    let gc_state = ctx.accounts.global_config.load()?;
-    let lamports = gc_state.ata_creation_cost + gc_state.txn_fee_cost;
-    drop(gc_state);
     if lamports > 0 {
         let maker = ctx.accounts.maker.key();
         let gc = ctx.accounts.global_config.key();
