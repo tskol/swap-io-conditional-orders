@@ -31,10 +31,21 @@ pub fn handler_create_order(
         LimoError::OrderSameMint
     );
     let parsed_order_type = OrderType::try_from(order_type).map_err(|_| LimoError::OrderTypeInvalid)?;
-    require!(parsed_order_type != OrderType::LimitChild, LimoError::OrderTypeInvalid);
+    require!(parsed_order_type != OrderType::LimitTP && parsed_order_type != OrderType::LimitSL, LimoError::OrderTypeInvalid);
 
+    let gc_state = ctx.accounts.global_config.load()?;
     if parsed_order_type == OrderType::Vanilla {
         require!(tp_output_amount == 0 && sl_output_amount == 0, LimoError::OrderParametersInvalid);
+    } else {
+        require!(gc_state.tp_sl_enabled, LimoError::TPSLNotEnabled);
+        require!(tp_output_amount > 0 || sl_output_amount > 0, LimoError::OrderParametersInvalid);
+        let tp_sl_min_distance = output_amount.checked_mul(gc_state.tp_sl_min_distance_bps).unwrap() / FULL_BPS;
+        if tp_output_amount > 0 {
+            require!(tp_output_amount >= tp_sl_min_distance, LimoError::TPSLMinDistanceNotMet);
+        }
+        if sl_output_amount > 0 {
+            require!(sl_output_amount >= tp_sl_min_distance, LimoError::TPSLMinDistanceNotMet);
+        }
     }
 
     let order = &mut ctx.accounts.order.load_init()?;
@@ -57,6 +68,8 @@ pub fn handler_create_order(
     )?;
 
     if parsed_order_type == OrderType::LimitParent {
+        require!(tp_output_amount > 0 || sl_output_amount > 0, LimoError::OrderParametersInvalid);
+        ctx.accounts.output_vault.as_ref().ok_or(LimoError::InvalidAccount)?;
         if tp_output_amount > 0 {
             let tp_order = &mut ctx.accounts.tp_order.load_init()?;
             operations::create_order(
@@ -70,8 +83,8 @@ pub fn handler_create_order(
                 ctx.accounts.input_mint.key(),
                 ctx.accounts.output_token_program.key(),
                 ctx.accounts.input_token_program.key(),
-                order_type,
-                ctx.bumps.input_vault,
+                OrderType::LimitTP as u8,
+                ctx.bumps.output_vault,
                 clock.unix_timestamp,
             )?;
             order.tp_child_order = ctx.accounts.tp_order.key();
@@ -89,8 +102,8 @@ pub fn handler_create_order(
                 ctx.accounts.input_mint.key(),
                 ctx.accounts.output_token_program.key(),
                 ctx.accounts.input_token_program.key(),
-                order_type,
-                ctx.bumps.input_vault,
+                OrderType::LimitSL as u8,
+                ctx.bumps.output_vault,
                 clock.unix_timestamp,
             )?;
             order.sl_child_order = ctx.accounts.sl_order.key();
@@ -196,6 +209,14 @@ pub struct CreateOrder<'info> {
         token::authority = pda_authority
     )]
     pub input_vault: Box<InterfaceAccount<'info, TokenAccount>>,
+
+    #[account(mut,
+        seeds = [seeds::ESCROW_VAULT, global_config.key().as_ref(), output_mint.key().as_ref()],
+        bump,
+        token::mint = output_mint,
+        token::authority = pda_authority
+    )]
+    pub output_vault: Option<Box<InterfaceAccount<'info, TokenAccount>>>,
 
     pub input_token_program: Interface<'info, TokenInterface>,
     pub output_token_program: Interface<'info, TokenInterface>,

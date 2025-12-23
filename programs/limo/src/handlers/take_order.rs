@@ -2,23 +2,18 @@ use anchor_lang::{prelude::*, Accounts};
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 use express_relay::{program::ExpressRelay, state::ExpressRelayMetadata};
 use solana_program::sysvar::{instructions::Instructions as SysInstructions, SysvarId};
+use pyth_solana_receiver_sdk::price_update::{PriceUpdateV2};
 
 use crate::{
-    global_seeds, intermediary_seeds,
-    operations::{self, validate_pda_authority_balance_and_update_accounting},
-    seeds::{self, GLOBAL_AUTH, INTERMEDIARY_OUTPUT_TOKEN_ACCOUNT},
-    state::{GlobalConfig, Order, TakeOrderEffects},
-    token_operations::{
+    LimoError, OrderDisplay, OrderType, global_seeds, intermediary_seeds, operations::{self, validate_pda_authority_balance_and_update_accounting}, seeds::{self, GLOBAL_AUTH, INTERMEDIARY_OUTPUT_TOKEN_ACCOUNT}, state::{GlobalConfig, Order, TakeOrderEffects, OraclePoolsState}, token_operations::{
         close_ata_accounts_with_signer_seeds,
         initialize_intermediary_token_account_with_signer_seeds,
         native_transfer_from_authority_to_user, native_transfer_from_user_to_account,
         transfer_from_user_to_token_account, transfer_from_vault_to_token_account,
-    },
-    utils::constraints::{
+    }, utils::constraints::{
         check_permission_express_relay_and_get_fees, is_counterparty_matching, is_wsol,
         token_2022::validate_token_extensions, verify_ata,
-    },
-    LimoError, OrderDisplay,
+    }
 };
 
 pub fn handler_take_order(
@@ -51,6 +46,61 @@ pub fn handler_take_order(
 
     let (is_order_permissionless, counterparty) = {
         let order = &ctx.accounts.order.load()?;
+
+        // Child order: require/validate parent, and validate brother iff it exists in the parent.
+        if order.parent_order != Pubkey::default() {
+            let parent_loader = ctx
+                .accounts
+                .parent_order
+                .as_ref()
+                .ok_or(LimoError::InvalidAccount)?;
+            require!(parent_loader.key() == order.parent_order, LimoError::InvalidAccount);
+
+            let parent = parent_loader.load()?;
+            let this_order_key = ctx.accounts.order.key();
+            let brother_key = if parent.tp_child_order == this_order_key {
+                parent.sl_child_order
+            } else if parent.sl_child_order == this_order_key {
+                parent.tp_child_order
+            } else {
+                return err!(LimoError::InvalidAccount);
+            };
+
+            // If the "brother" child wasn't created, allow it to be omitted.
+            if brother_key != Pubkey::default() {
+                require!(
+                    ctx.accounts
+                        .brother_order
+                        .as_ref()
+                        .map(|bo| bo.key() == brother_key)
+                        .unwrap_or(false),
+                    LimoError::InvalidAccount
+                );
+            }
+        }
+
+        // Parent order: validate TP/SL child accounts iff their pubkeys are set on-chain.
+        if order.tp_child_order != Pubkey::default() {
+            require!(
+                ctx.accounts
+                    .tp_child_order
+                    .as_ref()
+                    .map(|tpo| tpo.key() == order.tp_child_order)
+                    .unwrap_or(false),
+                LimoError::InvalidAccount
+            );
+        }
+        if order.sl_child_order != Pubkey::default() {
+            require!(
+                ctx.accounts
+                    .sl_child_order
+                    .as_ref()
+                    .map(|slo| slo.key() == order.sl_child_order)
+                    .unwrap_or(false),
+                LimoError::InvalidAccount
+            );
+        }
+
         (order.permissionless != 0, order.counterparty)
     };
 
@@ -65,19 +115,41 @@ pub fn handler_take_order(
     let order = &mut ctx.accounts.order.load_mut()?;
     let clock = Clock::get()?;
 
+    // Load optional accounts only if provided, and pass through as Option<&mut Order>.
+    let mut parent_order_mut = ctx
+        .accounts
+        .parent_order
+        .as_ref()
+        .map(|po| po.load_mut())
+        .transpose()?;
+    let mut brother_order_mut = ctx
+        .accounts
+        .brother_order
+        .as_ref()
+        .map(|bo| bo.load_mut())
+        .transpose()?;
+
     let TakeOrderEffects {
         input_to_send_to_taker,
         output_to_send_to_maker,
     } = operations::take_order(
         global_config,
         order,
+        parent_order_mut.as_deref_mut(),
+        brother_order_mut.as_deref_mut(),
+        ctx.accounts.input_oracle_pool.as_ref(),
+        ctx.accounts.output_oracle_pool.as_ref(),
+        ctx.accounts.input_price_update.as_ref(),
+        ctx.accounts.output_price_update.as_ref(),
+        ctx.accounts.input_mint.decimals,
+        ctx.accounts.output_mint.decimals,
         input_amount,
         tip,
         clock.unix_timestamp,
         min_output_amount,
     )?;
 
-    transfer_output_to_maker_and_input_to_taker(
+    transfer_output_and_input(
         &ctx,
         global_config,
         input_to_send_to_taker,
@@ -131,6 +203,16 @@ pub struct TakeOrder<'info> {
     )]
     pub order: AccountLoader<'info, Order>,
 
+    #[account(mut)]
+    pub parent_order: Option<AccountLoader<'info, Order>>,
+
+    pub tp_child_order: Option<AccountLoader<'info, Order>>,
+     
+    pub sl_child_order: Option<AccountLoader<'info, Order>>,
+
+    #[account(mut)]
+    pub brother_order: Option<AccountLoader<'info, Order>>,
+
     #[account(
         mint::token_program = input_token_program,
     )]
@@ -148,6 +230,30 @@ pub struct TakeOrder<'info> {
         token::authority = pda_authority
     )]
     pub input_vault: Box<InterfaceAccount<'info, TokenAccount>>,
+
+    #[account(mut,
+        seeds = [seeds::ESCROW_VAULT, global_config.key().as_ref(), output_mint.key().as_ref()],
+        bump,
+        token::mint = output_mint,
+        token::authority = pda_authority
+    )]
+    pub output_vault: Option<Box<InterfaceAccount<'info, TokenAccount>>>,
+
+    #[account(mut,
+        seeds = [seeds::ORACLE_POOL, output_mint.key().as_ref()],
+        bump = output_oracle_pool.bump,
+    )]
+    pub output_oracle_pool: Option<Account<'info, OraclePoolsState>>,
+
+    #[account(mut,
+        seeds = [seeds::ORACLE_POOL, input_mint.key().as_ref()],
+        bump = input_oracle_pool.bump,
+    )]
+    pub input_oracle_pool: Option<Account<'info, OraclePoolsState>>,
+
+    pub input_price_update: Option<Account<'info, PriceUpdateV2>>,
+
+    pub output_price_update: Option<Account<'info, PriceUpdateV2>>,
 
     #[account(mut,
         token::mint = input_mint,
@@ -229,7 +335,7 @@ fn check_permission_and_get_tip(
     Ok(tip)
 }
 
-fn transfer_output_to_maker_and_input_to_taker(
+fn transfer_output_and_input(
     ctx: &Context<TakeOrder>,
     global_config: &mut GlobalConfig,
     input_to_send_to_taker: u64,
@@ -239,7 +345,11 @@ fn transfer_output_to_maker_and_input_to_taker(
     let seeds: &[&[u8]] = global_seeds!(global_config.pda_authority_bump as u8, &gc);
 
     let output_is_wsol = is_wsol(&ctx.accounts.output_mint.key());
-    let output_destination_token_account = if output_is_wsol {
+    let order_is_limit_parent = ctx.accounts.order.load()?.order_type == OrderType::LimitParent as u8;
+    let output_destination_token_account = if order_is_limit_parent {
+        let output_vault = ctx.accounts.output_vault.as_ref().ok_or(LimoError::OutputVaultRequired)?;
+        output_vault.to_account_info()
+    } else if output_is_wsol {
         let intermediary_output_token_account = ctx
             .accounts
             .intermediary_output_token_account

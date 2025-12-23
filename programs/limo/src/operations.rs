@@ -1,5 +1,8 @@
 #![allow(clippy::too_many_arguments)]
 use std::cmp;
+pub use pythnet_sdk::messages::{FeedId, PriceFeedMessage};
+use pyth_solana_receiver_sdk::price_update::{get_feed_id_from_hex, PriceUpdateV2};
+use solana_clock::Clock as SolanaClock;
 
 use anchor_lang::prelude::*;
 use solana_program::clock;
@@ -29,6 +32,28 @@ pub fn initialize_global_config(
     global_config.total_tip_amount = 0;
     global_config.host_tip_amount = 0;
     global_config.pda_authority_previous_lamports_balance = pda_authority_previous_lamports_balance;
+}
+
+pub fn initialize_oracle_pool(
+    oracle_pool: &mut OraclePoolsState,
+    global_config: Pubkey,
+    feed_id: String,
+    token_mint: Pubkey,
+    oracle_maximum_age: u64,
+    bump: u8,
+) {
+    oracle_pool.global_config = global_config;
+    oracle_pool.oracle_feed_id = feed_id;
+    oracle_pool.oracle_maximum_age = oracle_maximum_age;
+    oracle_pool.token_mint = token_mint;
+    oracle_pool.bump = bump;
+}
+
+pub fn update_oracle_pool(
+    oracle_pool: &mut OraclePoolsState,
+    feed_id: String,
+) {
+    oracle_pool.oracle_feed_id = feed_id;
 }
 
 pub fn create_order(
@@ -240,10 +265,9 @@ pub fn take_order_calcs(
     );
 
     let input_to_send_to_taker = input_amount;
-    let numerator = u128::from(input_to_send_to_taker) * u128::from(order.expected_output_amount);
-    let denominator = u128::from(order.initial_input_amount);
-    // div_ceil equivalent: (numerator + denominator - 1) / denominator
-    let minimum_output_to_send_to_maker_u128 = (numerator + denominator - 1) / denominator;
+    let minimum_output_to_send_to_maker_u128 = (u128::from(input_to_send_to_taker)
+        * u128::from(order.expected_output_amount))
+    .div_ceil(u128::from(order.initial_input_amount));
 
     let minimum_output_to_send_to_maker = u64::try_from(minimum_output_to_send_to_maker_u128)
         .map_err(|_| dbg_msg!(LimoError::MathOverflow))?;
@@ -271,6 +295,14 @@ pub fn take_order_calcs(
 pub fn take_order(
     global_config: &mut GlobalConfig,
     order: &mut Order,
+    parent_order: Option<&mut Order>,
+    brother_order: Option<&mut Order>,
+    input_oracle_pool: Option<&OraclePoolsState>,
+    output_oracle_pool: Option<&OraclePoolsState>,
+    input_price_update: Option<&PriceUpdateV2>,
+    output_price_update: Option<&PriceUpdateV2>,
+    input_decimals: u8,
+    output_decimals: u8,
     input_amount: u64,
     tip_amount: u64,
     current_timestamp: clock::UnixTimestamp,
@@ -286,14 +318,36 @@ pub fn take_order(
         output_to_send_to_maker,
     } = take_order_calcs(order, input_amount, output_amount)?;
 
-    update_take_order_accounting_and_tips(
-        global_config,
-        order,
-        input_to_send_to_taker,
-        output_to_send_to_maker,
-        tip_amount,
-        current_timestamp,
-    )?;
+    let is_child_order = order.parent_order != Pubkey::default();
+
+    if is_child_order {
+        let parent_order = parent_order.ok_or(LimoError::InvalidAccount)?;
+        update_take_child_order_accounting_and_tips(
+            global_config,
+            order,
+            parent_order,
+            brother_order,
+            input_oracle_pool,
+            output_oracle_pool,
+            input_price_update,
+            output_price_update,
+            input_decimals,
+            output_decimals,
+            input_to_send_to_taker,
+            output_to_send_to_maker,
+            tip_amount,
+            current_timestamp,
+        )?;
+    } else {
+        update_take_order_accounting_and_tips(
+            global_config,
+            order,
+            input_to_send_to_taker,
+            output_to_send_to_maker,
+            tip_amount,
+            current_timestamp,
+        )?;
+    }
 
     Ok(TakeOrderEffects {
         input_to_send_to_taker,
@@ -420,6 +474,94 @@ fn update_take_order_accounting_and_tips(
         order.status = OrderStatus::Filled as u8;
     }
     order.last_updated_timestamp = current_timestamp.try_into().expect("Negative timestamp");
+    Ok(())
+}
+
+fn update_take_child_order_accounting_and_tips(
+    global_config: &mut GlobalConfig,
+    order: &mut Order,
+    parent_order: &mut Order,
+    brother_order: Option<&mut Order>,
+    input_oracle_pool: Option<&OraclePoolsState>,
+    output_oracle_pool: Option<&OraclePoolsState>,
+    input_price_update: Option<&PriceUpdateV2>,
+    output_price_update: Option<&PriceUpdateV2>,
+    input_decimals: u8,
+    output_decimals: u8,
+    input_to_send_to_taker: u64,
+    output_to_send_to_maker: u64,
+    tip_amount: u64,
+    current_timestamp: i64,
+) -> Result<()> {
+    require!(input_to_send_to_taker <= parent_order.available_child_input_amount, LimoError::OrderInputAmountTooLarge);
+    parent_order.available_child_input_amount = parent_order
+        .available_child_input_amount
+        .checked_sub(input_to_send_to_taker)
+        .ok_or_else(|| dbg_msg!(LimoError::MathOverflow))?;
+    if order.order_type == OrderType::LimitSL as u8 {
+        let input_oracle_pool = input_oracle_pool.ok_or(LimoError::InvalidAccount)?;
+        let output_oracle_pool = output_oracle_pool.ok_or(LimoError::InvalidAccount)?;
+        let input_price_update = input_price_update.ok_or(LimoError::InvalidAccount)?;
+        let output_price_update = output_price_update.ok_or(LimoError::InvalidAccount)?;
+        let anchor_clock = Clock::get()?;
+        // Convert anchor_lang::prelude::Clock to solana_clock::Clock
+        let solana_clock = SolanaClock {
+            slot: anchor_clock.slot,
+            epoch_start_timestamp: anchor_clock.epoch_start_timestamp,
+            epoch: anchor_clock.epoch,
+            leader_schedule_epoch: anchor_clock.leader_schedule_epoch,
+            unix_timestamp: anchor_clock.unix_timestamp,
+        };
+
+        let input_feed_id = get_feed_id_from_hex(&input_oracle_pool.oracle_feed_id)
+            .map_err(|_| LimoError::InvalidAccount)?;
+        let input_price = input_price_update
+            .get_price_no_older_than(&solana_clock, input_oracle_pool.oracle_maximum_age, &input_feed_id)
+            .map_err(|_| LimoError::InvalidAccount)?;
+        let output_feed_id = get_feed_id_from_hex(&output_oracle_pool.oracle_feed_id)
+            .map_err(|_| LimoError::InvalidAccount)?;
+        let output_price = output_price_update
+            .get_price_no_older_than(&solana_clock, output_oracle_pool.oracle_maximum_age, &output_feed_id)
+            .map_err(|_| LimoError::InvalidAccount)?;
+
+        let mut expected_output_usd_price = (u128::from(input_to_send_to_taker)
+            * u128::from(order.expected_output_amount))
+            .div_ceil(u128::from(order.initial_input_amount))
+            .checked_mul(u128::from(output_price.price as u64))
+            .unwrap()
+            .checked_div(10_u128.pow(output_price.exponent.abs().try_into().unwrap()))
+            .unwrap();
+
+        let mut expected_input_usd_price = (u128::from(input_to_send_to_taker)
+            * u128::from(input_price.price as u64))
+            .div_ceil(u128::from(10_u128.pow(input_price.exponent.abs().try_into().unwrap())));
+
+        if input_decimals > output_decimals {
+            expected_output_usd_price = expected_output_usd_price.checked_mul(10_u128.pow((input_decimals - output_decimals).try_into().unwrap())).unwrap();
+        } else {
+            expected_input_usd_price = expected_input_usd_price.checked_mul(10_u128.pow((output_decimals - input_decimals).try_into().unwrap())).unwrap();
+        }
+
+        if expected_input_usd_price > expected_output_usd_price {
+            return err!(LimoError::PriceTooHigh);
+        }
+    }
+
+    update_take_order_accounting_and_tips(
+        global_config,
+        order,
+        input_to_send_to_taker,
+        output_to_send_to_maker,
+        tip_amount,
+        current_timestamp
+    )?;
+
+    if parent_order.status == OrderStatus::Filled as u8 && parent_order.available_child_input_amount == 0 {
+        order.status = OrderStatus::Filled as u8;
+        if let Some(brother_order) = brother_order {
+            brother_order.status = OrderStatus::Filled as u8;
+        }
+    }
     Ok(())
 }
 

@@ -1,3 +1,4 @@
+#![feature(int_roundings)]
 use std::num::TryFromIntError;
 
 use anchor_lang::prelude::*;
@@ -198,6 +199,12 @@ pub mod limo {
 #[error_code]
 #[derive(Error, PartialEq, Eq, TryFromPrimitive)]
 pub enum LimoError {
+    #[msg("Price too high")]
+    PriceTooHigh,
+
+    #[msg("Output vault required")]
+    OutputVaultRequired,
+
     #[msg("Order can't be canceled")]
     OrderCanNotBeCanceled,
 

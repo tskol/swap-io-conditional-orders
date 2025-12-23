@@ -36,7 +36,8 @@ impl From<u8> for OrderStatus {
 pub enum OrderType {
     Vanilla = 0,
     LimitParent = 1,
-    LimitChild = 2,
+    LimitTP = 2,
+    LimitSL = 3,
 }
 
 impl From<OrderType> for u8 {
@@ -44,7 +45,8 @@ impl From<OrderType> for u8 {
         match val {
             OrderType::Vanilla => 0,
             OrderType::LimitParent => 1,
-            OrderType::LimitChild => 2,
+            OrderType::LimitTP => 2,
+            OrderType::LimitSL => 3,
         }
     }
 }
@@ -55,7 +57,8 @@ impl TryFrom<u8> for OrderType {
         match val {
             0 => Ok(OrderType::Vanilla),
             1 => Ok(OrderType::LimitParent),
-            2 => Ok(OrderType::LimitChild),
+            2 => Ok(OrderType::LimitTP),
+            3 => Ok(OrderType::LimitSL),
             _ => Err(LimoError::OrderTypeInvalid),
         }
     }
@@ -150,6 +153,18 @@ pub struct UserSwapBalanceDiffs {
 
 #[derive(PartialEq, Derivative)]
 #[derivative(Debug)]
+#[account()]
+pub struct OraclePoolsState {
+    pub global_config: Pubkey,
+
+    pub oracle_feed_id: String,
+    pub oracle_maximum_age: u64,
+    pub token_mint: Pubkey,
+    pub bump: u8,
+}
+
+#[derive(PartialEq, Derivative)]
+#[derivative(Debug)]
 #[account(zero_copy)]
 pub struct GlobalConfig {
     pub emergency_mode: u8,
@@ -173,6 +188,16 @@ pub struct GlobalConfig {
     pub admin_authority_cached: Pubkey,
     pub txn_fee_cost: u64,
     pub ata_creation_cost: u64,
+
+    pub tp_sl_enabled: bool,
+    pub oracle_max_staleness_seconds: u64,
+    pub create_order_fee_bps: u16,
+    pub sl_max_upward_deviation_bps: u16,
+    pub tp_sl_min_distance_bps: u16,
+    pub parent_fill_fee_keeper_bps: u16,
+    pub parent_fill_fee_protocol_bps: u16,
+    pub tp_sl_child_fee_keeper_bps: u16,
+    pub tp_sl_child_fee_protocol_bps: u16,
 
     pub padding2: [u64; 241],
 }
@@ -201,6 +226,15 @@ impl Default for GlobalConfig {
             admin_authority_cached: Pubkey::default(),
             emergency_mode: 0,
             ata_creation_cost: 0,
+            tp_sl_enabled: true,
+            oracle_max_staleness_seconds: 30,
+            create_order_fee_bps: 0,
+            sl_max_upward_deviation_bps: 0,
+            tp_sl_min_distance_bps: 0,
+            parent_fill_fee_keeper_bps: 0,
+            parent_fill_fee_protocol_bps: 0,
+            tp_sl_child_fee_keeper_bps: 0,
+            tp_sl_child_fee_protocol_bps: 0,
             txn_fee_cost: 0,
             padding0: [0; 2],
             padding1: [0; 9],
