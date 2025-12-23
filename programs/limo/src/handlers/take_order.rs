@@ -394,7 +394,7 @@ fn transfer_output_and_input(
         ctx.accounts.output_mint.decimals,
     )?;
 
-    if output_is_wsol {
+    if !order_is_limit_parent && output_is_wsol {
         close_ata_accounts_with_signer_seeds(
             output_destination_token_account,
             ctx.accounts.pda_authority.to_account_info(),
