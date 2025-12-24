@@ -43,10 +43,10 @@ pub fn handler_create_order(
         require!(tp_output_amount > 0 || sl_output_amount > 0, LimoError::OrderParametersInvalid);
         let tp_sl_min_distance = output_amount.checked_mul(gc_state.tp_sl_min_distance_bps.try_into().unwrap()).unwrap() / FULL_BPS;
         if tp_output_amount > 0 {
-            require!(tp_output_amount >= tp_sl_min_distance, LimoError::TPSLMinDistanceNotMet);
+            require!(tp_output_amount >= output_amount.checked_add(tp_sl_min_distance).unwrap(), LimoError::TPSLMinDistanceNotMet);
         }
         if sl_output_amount > 0 {
-            require!(sl_output_amount >= tp_sl_min_distance, LimoError::TPSLMinDistanceNotMet);
+            require!(sl_output_amount >= output_amount.checked_sub(tp_sl_min_distance).unwrap(), LimoError::TPSLMinDistanceNotMet);
         }
     }
     drop(gc_state);
