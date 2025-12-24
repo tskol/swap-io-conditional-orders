@@ -519,25 +519,30 @@ fn update_take_child_order_accounting_and_tips(
             .get_price_no_older_than(&anchor_clock, global_config.oracle_max_staleness_seconds, &output_feed_id)
             .map_err(|_| LimoError::InvalidAccount)?;
 
-        let mut expected_output_usd_price = (u128::from(input_to_send_to_taker)
+        let mut expected_output_usd_price = u64::try_from((u128::from(input_to_send_to_taker)
             * u128::from(order.expected_output_amount))
             .div_ceil(u128::from(order.initial_input_amount))
             .checked_mul(u128::from(output_price.price as u64))
             .unwrap()
             .checked_div(10_u128.pow(output_price.exponent.abs().try_into().unwrap()))
-            .unwrap();
+            .unwrap())
+            .map_err(|_| dbg_msg!(LimoError::MathOverflow))?;
 
-        let mut expected_input_usd_price = (u128::from(input_to_send_to_taker)
+        let mut expected_input_usd_price = u64::try_from((u128::from(input_to_send_to_taker)
             * u128::from(input_price.price as u64))
-            .div_ceil(u128::from(10_u128.pow(input_price.exponent.abs().try_into().unwrap())));
+            .div_ceil(u128::from(10_u128.pow(input_price.exponent.abs().try_into().unwrap()))))
+            .map_err(|_| dbg_msg!(LimoError::MathOverflow))?;
 
         if input_decimals > output_decimals {
-            expected_output_usd_price = expected_output_usd_price.checked_mul(10_u128.pow((input_decimals - output_decimals).try_into().unwrap())).unwrap();
+            expected_output_usd_price = expected_output_usd_price.checked_mul(10_u64.pow((input_decimals - output_decimals).try_into().unwrap())).unwrap();
         } else {
-            expected_input_usd_price = expected_input_usd_price.checked_mul(10_u128.pow((output_decimals - input_decimals).try_into().unwrap())).unwrap();
+            expected_input_usd_price = expected_input_usd_price.checked_mul(10_u64.pow((output_decimals - input_decimals).try_into().unwrap())).unwrap();
         }
 
-        if expected_input_usd_price > expected_output_usd_price {
+        let sl_max_upward_deviation = (Fraction::from_bps(global_config.sl_max_upward_deviation_bps) * Fraction::from(expected_output_usd_price))
+            .to_ceil::<u64>();
+
+        if expected_input_usd_price > expected_output_usd_price.checked_add(sl_max_upward_deviation).unwrap() {
             return err!(LimoError::PriceTooHigh);
         }
     }
