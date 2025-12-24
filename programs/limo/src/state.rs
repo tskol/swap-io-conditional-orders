@@ -246,6 +246,7 @@ impl Default for GlobalConfig {
 pub struct TakeOrderEffects {
     pub input_to_send_to_taker: u64,
     pub output_to_send_to_maker: u64,
+    pub output_to_send_to_protocol: u64,
 }
 
 pub struct TipCalcs {

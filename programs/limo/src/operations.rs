@@ -1,7 +1,5 @@
 #![allow(clippy::too_many_arguments)]
-use std::cmp;
 use pyth_solana_receiver_sdk::price_update::{get_feed_id_from_hex, PriceUpdateV2};
-// use solana_clock::Clock as SolanaClock;
 
 use anchor_lang::prelude::*;
 use solana_program::clock;
@@ -194,64 +192,65 @@ pub fn withdraw_host_tip(
     Ok(host_tip_amount)
 }
 
-pub fn flash_withdraw_order_input(
-    order: &mut Order,
-    input_amount: u64,
-    output_amount: u64,
-) -> Result<TakeOrderEffects> {
-    let TakeOrderEffects {
-        input_to_send_to_taker,
-        output_to_send_to_maker,
-    } = take_order_calcs(order, input_amount, output_amount)?;
+// pub fn flash_withdraw_order_input(
+//     order: &mut Order,
+//     input_amount: u64,
+//     output_amount: u64,
+// ) -> Result<TakeOrderEffects> {
+//     let TakeOrderEffects {
+//         input_to_send_to_taker,
+//         output_to_send_to_maker,
+//     } = take_order_calcs(order, input_amount, output_amount)?;
 
-    require!(
-        order.flash_ix_lock == 0,
-        LimoError::OrderWithinFlashOperation
-    );
+//     require!(
+//         order.flash_ix_lock == 0,
+//         LimoError::OrderWithinFlashOperation
+//     );
 
-    order.flash_ix_lock = 1;
-    Ok(TakeOrderEffects {
-        input_to_send_to_taker,
-        output_to_send_to_maker,
-    })
-}
+//     order.flash_ix_lock = 1;
+//     Ok(TakeOrderEffects {
+//         input_to_send_to_taker,
+//         output_to_send_to_maker,
+//     })
+// }
 
-pub fn flash_pay_order_output(
-    global_config: &mut GlobalConfig,
-    order: &mut Order,
-    input_amount: u64,
-    output_amount: u64,
-    tip_amount: u64,
-    current_timestamp: clock::UnixTimestamp,
-) -> Result<TakeOrderEffects> {
-    let TakeOrderEffects {
-        input_to_send_to_taker,
-        output_to_send_to_maker,
-    } = take_order_calcs(order, input_amount, output_amount)?;
+// pub fn flash_pay_order_output(
+//     global_config: &mut GlobalConfig,
+//     order: &mut Order,
+//     input_amount: u64,
+//     output_amount: u64,
+//     tip_amount: u64,
+//     current_timestamp: clock::UnixTimestamp,
+// ) -> Result<TakeOrderEffects> {
+//     let TakeOrderEffects {
+//         input_to_send_to_taker,
+//         output_to_send_to_maker,
+//     } = take_order_calcs(order, input_amount, output_amount)?;
 
-    require!(
-        order.flash_ix_lock == 1,
-        LimoError::OrderNotWithinFlashOperation
-    );
+//     require!(
+//         order.flash_ix_lock == 1,
+//         LimoError::OrderNotWithinFlashOperation
+//     );
 
-    update_take_order_accounting_and_tips(
-        global_config,
-        order,
-        input_to_send_to_taker,
-        output_to_send_to_maker,
-        tip_amount,
-        current_timestamp,
-    )?;
+//     update_take_order_accounting_and_tips(
+//         global_config,
+//         order,
+//         input_to_send_to_taker,
+//         output_to_send_to_maker,
+//         tip_amount,
+//         current_timestamp,
+//     )?;
 
-    order.flash_ix_lock = 0;
-    Ok(TakeOrderEffects {
-        input_to_send_to_taker,
-        output_to_send_to_maker,
-    })
-}
+//     order.flash_ix_lock = 0;
+//     Ok(TakeOrderEffects {
+//         input_to_send_to_taker,
+//         output_to_send_to_maker,
+//     })
+// }
 
 pub fn take_order_calcs(
     order: &Order,
+    global_config: &GlobalConfig,
     input_amount: u64,
     output_amount: u64,
 ) -> Result<TakeOrderEffects> {
@@ -275,9 +274,33 @@ pub fn take_order_calcs(
     let minimum_output_to_send_to_maker = u64::try_from(minimum_output_to_send_to_maker_u128)
         .map_err(|_| dbg_msg!(LimoError::MathOverflow))?;
 
-    let output_to_send_to_maker = cmp::max(output_amount, minimum_output_to_send_to_maker);
+    let fee_pot = output_amount.checked_sub(minimum_output_to_send_to_maker).unwrap_or(0);
 
-    if output_to_send_to_maker != output_amount {
+    let mut output_to_send_to_protocol = 0;
+    let mut output_keeper_fee = 0;
+    if fee_pot > 0 {
+        if order.order_type == OrderType::LimitParent as u8 {
+            output_to_send_to_protocol = (Fraction::from_bps(global_config.parent_fill_fee_protocol_bps) * Fraction::from(fee_pot))
+                .to_ceil::<u64>();
+            output_keeper_fee = (Fraction::from_bps(global_config.parent_fill_fee_keeper_bps) * Fraction::from(fee_pot))
+                .to_ceil::<u64>();
+        } else if order.order_type == OrderType::LimitTP as u8 || order.order_type == OrderType::LimitSL as u8 {
+            output_to_send_to_protocol = (Fraction::from_bps(global_config.tp_sl_child_fee_protocol_bps) * Fraction::from(fee_pot))
+                .to_ceil::<u64>();
+            output_keeper_fee = (Fraction::from_bps(global_config.tp_sl_child_fee_keeper_bps) * Fraction::from(fee_pot))
+                .to_ceil::<u64>();
+        }
+    }
+
+    let output_to_send_to_maker = output_amount
+        .checked_sub(output_to_send_to_protocol)
+        .ok_or(LimoError::MathOverflow)
+        .unwrap()
+        .checked_sub(output_keeper_fee)
+        .ok_or(LimoError::MathOverflow)
+        .unwrap();
+
+    if output_to_send_to_maker < minimum_output_to_send_to_maker {
         msg!("output_amount: {}", output_amount);
         msg!(
             "minimum_output_to_send_to_maker: {}",
@@ -288,10 +311,12 @@ pub fn take_order_calcs(
 
     msg!("input_to_send_to_taker: {}", input_to_send_to_taker);
     msg!("output_to_send_to_maker: {}", output_to_send_to_maker);
+    msg!("output_to_send_to_protocol: {}", output_to_send_to_protocol);
 
     Ok(TakeOrderEffects {
         input_to_send_to_taker,
         output_to_send_to_maker,
+        output_to_send_to_protocol,
     })
 }
 
@@ -319,7 +344,8 @@ pub fn take_order(
     let TakeOrderEffects {
         input_to_send_to_taker,
         output_to_send_to_maker,
-    } = take_order_calcs(order, input_amount, output_amount)?;
+        output_to_send_to_protocol,
+    } = take_order_calcs(order, global_config, input_amount, output_amount)?;
 
     let is_child_order = order.parent_order != Pubkey::default();
 
@@ -355,6 +381,7 @@ pub fn take_order(
     Ok(TakeOrderEffects {
         input_to_send_to_taker,
         output_to_send_to_maker,
+        output_to_send_to_protocol,
     })
 }
 

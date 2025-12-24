@@ -132,6 +132,7 @@ pub fn handler_take_order(
     let TakeOrderEffects {
         input_to_send_to_taker,
         output_to_send_to_maker,
+        output_to_send_to_protocol,
     } = operations::take_order(
         global_config,
         order,
@@ -154,6 +155,7 @@ pub fn handler_take_order(
         global_config,
         input_to_send_to_taker,
         output_to_send_to_maker,
+        output_to_send_to_protocol,
     )?;
 
     tip_transfer_and_validation(&ctx, global_config, tip, is_filled_by_per)?;
@@ -238,6 +240,14 @@ pub struct TakeOrder<'info> {
         token::authority = pda_authority
     )]
     pub output_vault: Option<Box<InterfaceAccount<'info, TokenAccount>>>,
+
+    #[account(mut,
+        seeds = [seeds::FEE_VAULT, global_config.key().as_ref(), output_mint.key().as_ref()],
+        bump,
+        token::mint = output_mint,
+        token::authority = pda_authority
+    )]
+    pub output_fee_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(mut,
         seeds = [seeds::ORACLE_POOL, output_mint.key().as_ref()],
@@ -340,6 +350,7 @@ fn transfer_output_and_input(
     global_config: &mut GlobalConfig,
     input_to_send_to_taker: u64,
     output_to_send_to_maker: u64,
+    output_to_send_to_protocol: u64,
 ) -> Result<()> {
     let gc = ctx.accounts.global_config.key();
     let seeds: &[&[u8]] = global_seeds!(global_config.pda_authority_bump as u8, &gc);
@@ -407,6 +418,18 @@ fn transfer_output_and_input(
             ctx.accounts.maker.to_account_info(),
             seeds,
             output_to_send_to_maker,
+        )?;
+    }
+
+    if output_to_send_to_protocol > 0 {
+        transfer_from_user_to_token_account(
+            ctx.accounts.taker_output_ata.to_account_info(),
+            ctx.accounts.output_fee_vault.to_account_info(),
+            ctx.accounts.pda_authority.to_account_info(),
+            ctx.accounts.output_mint.to_account_info(),
+            ctx.accounts.output_token_program.to_account_info(),
+            output_to_send_to_protocol,
+            ctx.accounts.output_mint.decimals,
         )?;
     }
 

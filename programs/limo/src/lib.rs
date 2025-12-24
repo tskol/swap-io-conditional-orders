@@ -13,7 +13,7 @@ use num_enum::TryFromPrimitive;
 use thiserror::Error;
 use utils::{
     constraints::{
-        create_new_orders_disabled, emergency_mode_disabled, flash_taking_orders_disabled,
+        create_new_orders_disabled, emergency_mode_disabled,// flash_taking_orders_disabled,
         taking_orders_disabled,
     },
     consts::UPDATE_GLOBAL_CONFIG_BYTE_SIZE,
@@ -100,39 +100,39 @@ pub mod limo {
         )
     }
 
-    #[access_control(taking_orders_disabled(&ctx.accounts.global_config))]
-    #[access_control(flash_taking_orders_disabled(&ctx.accounts.global_config))]
-    #[access_control(emergency_mode_disabled(&ctx.accounts.global_config))]
-    pub fn flash_take_order_start(
-        ctx: Context<FlashTakeOrder>,
-        input_amount: u64,
-        min_output_amount: u64,
-        tip_amount_permissionless_taking: u64,
-    ) -> Result<()> {
-        handlers::flash_take_order::handler_start(
-            ctx,
-            input_amount,
-            min_output_amount,
-            tip_amount_permissionless_taking,
-        )
-    }
+    // #[access_control(taking_orders_disabled(&ctx.accounts.global_config))]
+    // #[access_control(flash_taking_orders_disabled(&ctx.accounts.global_config))]
+    // #[access_control(emergency_mode_disabled(&ctx.accounts.global_config))]
+    // pub fn flash_take_order_start(
+    //     ctx: Context<FlashTakeOrder>,
+    //     input_amount: u64,
+    //     min_output_amount: u64,
+    //     tip_amount_permissionless_taking: u64,
+    // ) -> Result<()> {
+    //     handlers::flash_take_order::handler_start(
+    //         ctx,
+    //         input_amount,
+    //         min_output_amount,
+    //         tip_amount_permissionless_taking,
+    //     )
+    // }
 
-    #[access_control(taking_orders_disabled(&ctx.accounts.global_config))]
-    #[access_control(flash_taking_orders_disabled(&ctx.accounts.global_config))]
-    #[access_control(emergency_mode_disabled(&ctx.accounts.global_config))]
-    pub fn flash_take_order_end(
-        ctx: Context<FlashTakeOrder>,
-        input_amount: u64,
-        min_output_amount: u64,
-        tip_amount_permissionless_taking: u64,
-    ) -> Result<()> {
-        handlers::flash_take_order::handler_end(
-            ctx,
-            input_amount,
-            min_output_amount,
-            tip_amount_permissionless_taking,
-        )
-    }
+    // #[access_control(taking_orders_disabled(&ctx.accounts.global_config))]
+    // #[access_control(flash_taking_orders_disabled(&ctx.accounts.global_config))]
+    // #[access_control(emergency_mode_disabled(&ctx.accounts.global_config))]
+    // pub fn flash_take_order_end(
+    //     ctx: Context<FlashTakeOrder>,
+    //     input_amount: u64,
+    //     min_output_amount: u64,
+    //     tip_amount_permissionless_taking: u64,
+    // ) -> Result<()> {
+    //     handlers::flash_take_order::handler_end(
+    //         ctx,
+    //         input_amount,
+    //         min_output_amount,
+    //         tip_amount_permissionless_taking,
+    //     )
+    // }
 
     pub fn update_global_config(
         ctx: Context<UpdateGlobalConfig>,
