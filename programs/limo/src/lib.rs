@@ -203,6 +203,9 @@ pub mod limo {
 #[error_code]
 #[derive(Error, PartialEq, Eq, TryFromPrimitive)]
 pub enum LimoError {
+    #[msg("Invalid BPS value, must be between 0 and 10000")]
+    InvalidBps,
+
     #[msg("Invalid withdraw fee amount")]
     InvalidWithdrawFeeAmount,
 

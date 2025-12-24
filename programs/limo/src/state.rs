@@ -263,10 +263,18 @@ pub enum UpdateGlobalConfigMode {
     UpdateBlockOrderTaking = 3,
     UpdateHostFeeBps = 4,
     UpdateAdminAuthorityCached = 5,
-    UpdateOrderTakingPermissionless = 6,
-    UpdateOrderCloseDelaySeconds = 7,
-    UpdateTxnFeeCost = 8,
-    UpdateAtaCreationCost = 9,
+    UpdateOrderCloseDelaySeconds = 6,
+    UpdateTxnFeeCost = 7,
+    UpdateAtaCreationCost = 8,
+    UpdateTpSlEnabled = 9,
+    UpdateCreateOrderFeeBps = 10,
+    UpdateParentFillFeeKeeperBps = 11,
+    UpdateParentFillFeeProtocolBps = 12,
+    UpdateTpSlChildFeeKeeperBps = 13,
+    UpdateTpSlChildFeeProtocolBps = 14,
+    UpdateOracleMaxStalenessSeconds = 15,
+    UpdateSlMaxUpwardDeviationBps = 16,
+    UpdateTpSlMinDistanceBps = 17,
 }
 
 #[derive(PartialEq, Eq, Clone, Debug)]

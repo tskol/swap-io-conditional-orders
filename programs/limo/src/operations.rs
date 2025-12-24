@@ -396,16 +396,20 @@ pub fn update_global_config(
         | UpdateGlobalConfigMode::UpdateFlashTakeOrderBlocked
         | UpdateGlobalConfigMode::UpdateBlockNewOrders
         | UpdateGlobalConfigMode::UpdateBlockOrderTaking
-        | UpdateGlobalConfigMode::UpdateOrderTakingPermissionless => {
+        | UpdateGlobalConfigMode::UpdateTpSlEnabled => {
             let value = value[0];
             update_global_config_flag(global_config, mode, value, ts)?;
         }
-        UpdateGlobalConfigMode::UpdateHostFeeBps => {
+        UpdateGlobalConfigMode::UpdateHostFeeBps
+        | UpdateGlobalConfigMode::UpdateCreateOrderFeeBps
+        | UpdateGlobalConfigMode::UpdateSlMaxUpwardDeviationBps
+        | UpdateGlobalConfigMode::UpdateTpSlMinDistanceBps
+        | UpdateGlobalConfigMode::UpdateParentFillFeeKeeperBps
+        | UpdateGlobalConfigMode::UpdateParentFillFeeProtocolBps
+        | UpdateGlobalConfigMode::UpdateTpSlChildFeeKeeperBps
+        | UpdateGlobalConfigMode::UpdateTpSlChildFeeProtocolBps => {
             let value = u16::from_le_bytes(value[0..2].try_into().unwrap());
-            require!(value <= 10000, LimoError::InvalidHostFee);
-            msg!("update_global_config mode={:?} ts={}", mode, ts);
-            msg!("new={} prev={}", value, global_config.host_fee_bps);
-            global_config.host_fee_bps = value;
+            update_global_config_bps(global_config, mode, value, ts)?;
         }
         UpdateGlobalConfigMode::UpdateOrderCloseDelaySeconds => {
             let value = u64::from_le_bytes(value[0..8].try_into().unwrap());
@@ -432,6 +436,12 @@ pub fn update_global_config(
             msg!("update_global_config mode={:?} ts={}", mode, ts);
             msg!("new={} prev={}", value, global_config.ata_creation_cost);
             global_config.ata_creation_cost = value;
+        }
+        UpdateGlobalConfigMode::UpdateOracleMaxStalenessSeconds => {
+            let value = u64::from_le_bytes(value[0..8].try_into().unwrap());
+            msg!("update_global_config mode={:?} ts={}", mode, ts);
+            msg!("new={} prev={}", value, global_config.oracle_max_staleness_seconds);
+            global_config.oracle_max_staleness_seconds = value;
         }
     }
     Ok(())
@@ -639,8 +649,60 @@ fn update_global_config_flag(
             msg!("new={} prev={}", value, global_config.orders_taking_blocked,);
             global_config.orders_taking_blocked = value;
         }
-        UpdateGlobalConfigMode::UpdateOrderTakingPermissionless => {
-            msg!("Field deprecated");
+        UpdateGlobalConfigMode::UpdateTpSlEnabled => {
+            msg!("new={} prev={}", value, global_config.tp_sl_enabled,);
+            global_config.tp_sl_enabled = value;
+        }
+        _ => return Err(LimoError::InvalidConfigOption.into()),
+    }
+
+    Ok(())
+}
+
+fn update_global_config_bps(
+    global_config: &mut GlobalConfig,
+    mode: UpdateGlobalConfigMode,
+    value: u16,
+    ts: u64,
+) -> Result<()> {
+    msg!("update_global_config_bps mode={:?} ts={}", mode, ts);
+
+    if value > 10000 {
+        return err!(LimoError::InvalidBps);
+    }
+
+    match mode {
+        UpdateGlobalConfigMode::UpdateHostFeeBps => {
+            msg!("new={} prev={}", value, global_config.host_fee_bps);
+            global_config.host_fee_bps = value;
+        }
+        UpdateGlobalConfigMode::UpdateCreateOrderFeeBps => {
+            msg!("new={} prev={}", value, global_config.create_order_fee_bps);
+            global_config.create_order_fee_bps = value;
+        }
+        UpdateGlobalConfigMode::UpdateSlMaxUpwardDeviationBps => {
+            msg!("new={} prev={}", value, global_config.sl_max_upward_deviation_bps);
+            global_config.sl_max_upward_deviation_bps = value;
+        }
+        UpdateGlobalConfigMode::UpdateTpSlMinDistanceBps => {
+            msg!("new={} prev={}", value, global_config.tp_sl_min_distance_bps);
+            global_config.tp_sl_min_distance_bps = value;
+        }
+        UpdateGlobalConfigMode::UpdateParentFillFeeKeeperBps => {
+            msg!("new={} prev={}", value, global_config.parent_fill_fee_keeper_bps);
+            global_config.parent_fill_fee_keeper_bps = value;
+        }
+        UpdateGlobalConfigMode::UpdateParentFillFeeProtocolBps => {
+            msg!("new={} prev={}", value, global_config.parent_fill_fee_protocol_bps);
+            global_config.parent_fill_fee_protocol_bps = value;
+        }
+        UpdateGlobalConfigMode::UpdateTpSlChildFeeKeeperBps => {
+            msg!("new={} prev={}", value, global_config.tp_sl_child_fee_keeper_bps);
+            global_config.tp_sl_child_fee_keeper_bps = value;
+        }
+        UpdateGlobalConfigMode::UpdateTpSlChildFeeProtocolBps => {
+            msg!("new={} prev={}", value, global_config.tp_sl_child_fee_protocol_bps);
+            global_config.tp_sl_child_fee_protocol_bps = value;
         }
         _ => return Err(LimoError::InvalidConfigOption.into()),
     }
