@@ -48,6 +48,10 @@ pub mod limo {
         handlers::initialize_global_config::handler_initialize_global_config(ctx)
     }
 
+    pub fn initialize_oracle_pool(ctx: Context<InitializeOraclePool>, feed_id: String) -> Result<()> {
+        handlers::initialize_oracle_pool::handler_initialize_oracle_pool(ctx, feed_id)
+    }
+
     #[access_control(emergency_mode_disabled(&ctx.accounts.global_config))]
     pub fn initialize_vault(ctx: Context<InitializeVault>) -> Result<()> {
         handlers::initialize_vault::handler_initialize_vault(ctx)

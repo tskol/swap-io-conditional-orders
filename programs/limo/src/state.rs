@@ -158,7 +158,6 @@ pub struct OraclePoolsState {
     pub global_config: Pubkey,
 
     pub oracle_feed_id: String,
-    pub oracle_maximum_age: u64,
     pub token_mint: Pubkey,
     pub bump: u8,
 }

@@ -4,7 +4,7 @@ use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 use crate::state::{GlobalConfig, OraclePoolsState};
 use crate::{seeds};
 
-pub fn handler_initialize_oracle_pool(ctx: Context<InitializeOraclePool>, feed_id: String, oracle_maximum_age: u64) -> Result<()> {
+pub fn handler_initialize_oracle_pool(ctx: Context<InitializeOraclePool>, feed_id: String) -> Result<()> {
     let oracle_pool = &mut ctx.accounts.oracle_pool;
     let global_config = ctx.accounts.global_config.key();
 
@@ -16,7 +16,6 @@ pub fn handler_initialize_oracle_pool(ctx: Context<InitializeOraclePool>, feed_i
         global_config,
         feed_id,
         token_mint,
-        oracle_maximum_age,
         bump,
     );
 

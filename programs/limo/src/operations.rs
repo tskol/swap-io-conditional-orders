@@ -38,12 +38,10 @@ pub fn initialize_oracle_pool(
     global_config: Pubkey,
     feed_id: String,
     token_mint: Pubkey,
-    oracle_maximum_age: u64,
     bump: u8,
 ) {
     oracle_pool.global_config = global_config;
     oracle_pool.oracle_feed_id = feed_id;
-    oracle_pool.oracle_maximum_age = oracle_maximum_age;
     oracle_pool.token_mint = token_mint;
     oracle_pool.bump = bump;
 }
@@ -507,12 +505,12 @@ fn update_take_child_order_accounting_and_tips(
         let input_feed_id = get_feed_id_from_hex(&input_oracle_pool.oracle_feed_id)
             .map_err(|_| LimoError::InvalidAccount)?;
         let input_price = input_price_update
-            .get_price_no_older_than(&anchor_clock, input_oracle_pool.oracle_maximum_age, &input_feed_id)
+            .get_price_no_older_than(&anchor_clock, global_config.oracle_max_staleness_seconds, &input_feed_id)
             .map_err(|_| LimoError::InvalidAccount)?;
         let output_feed_id = get_feed_id_from_hex(&output_oracle_pool.oracle_feed_id)
             .map_err(|_| LimoError::InvalidAccount)?;
         let output_price = output_price_update
-            .get_price_no_older_than(&anchor_clock, output_oracle_pool.oracle_maximum_age, &output_feed_id)
+            .get_price_no_older_than(&anchor_clock, global_config.oracle_max_staleness_seconds, &output_feed_id)
             .map_err(|_| LimoError::InvalidAccount)?;
 
         let mut expected_output_usd_price = (u128::from(input_to_send_to_taker)
