@@ -16,6 +16,12 @@ use crate::{
     LimoError,
 };
 
+pub fn calculate_fee_amount(amount: u64, fee_bps: u16) -> Result<u64> {
+    let fee_amount = (Fraction::from_bps(fee_bps) * Fraction::from(amount))
+        .to_ceil::<u64>();
+    Ok(fee_amount)
+}
+
 pub fn initialize_global_config(
     global_config: &mut GlobalConfig,
     admin_authority: Pubkey,

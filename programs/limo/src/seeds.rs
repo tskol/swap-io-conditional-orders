@@ -1,5 +1,6 @@
 pub const GLOBAL_AUTH: &[u8] = b"authority";
 pub const TIP_VAULT: &[u8] = b"tip_vault";
+pub const FEE_VAULT: &[u8] = b"fee_vault";
 pub const ESCROW_VAULT: &[u8] = b"escrow_vault";
 pub const INTERMEDIARY_OUTPUT_TOKEN_ACCOUNT: &[u8] = b"intermediary";
 pub const EVENT_AUTHORITY: &[u8] = b"__event_authority";

@@ -5,7 +5,7 @@ use crate::{seeds, state::GlobalConfig, LimoError};
 
 pub fn handler_initialize_vault(ctx: Context<InitializeVault>) -> Result<()> {
     msg!(
-        "Initializing vault for global config {} with mint {}",
+        "Initializing main and fee vaults for global config {} with mint {}",
         ctx.accounts.global_config.key(),
         ctx.accounts.mint.key(),
     );
@@ -43,6 +43,16 @@ pub struct InitializeVault<'info> {
         token::token_program = token_program,
     )]
     pub vault: Box<InterfaceAccount<'info, TokenAccount>>,
+
+    #[account(init,
+        seeds = [seeds::FEE_VAULT, global_config.key().as_ref(), mint.key().as_ref()],
+        bump,
+        payer = payer,
+        token::mint = mint,
+        token::authority = pda_authority,
+        token::token_program = token_program,
+    )]
+    pub fee_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
     pub token_program: Interface<'info, TokenInterface>,
     pub system_program: Program<'info, System>,

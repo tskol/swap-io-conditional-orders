@@ -203,6 +203,9 @@ pub mod limo {
 #[error_code]
 #[derive(Error, PartialEq, Eq, TryFromPrimitive)]
 pub enum LimoError {
+    #[msg("Invalid withdraw fee amount")]
+    InvalidWithdrawFeeAmount,
+
     #[msg("TPSL not enabled")]
     TPSLNotEnabled,
 

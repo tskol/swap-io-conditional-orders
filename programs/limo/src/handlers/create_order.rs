@@ -49,6 +49,7 @@ pub fn handler_create_order(
             require!(sl_output_amount >= output_amount.checked_sub(tp_sl_min_distance).unwrap(), LimoError::TPSLMinDistanceNotMet);
         }
     }
+    let create_order_fee = operations::calculate_fee_amount(input_amount, gc_state.create_order_fee_bps)?;
     drop(gc_state);
 
     let order = &mut ctx.accounts.order.load_init()?;
@@ -123,6 +124,17 @@ pub fn handler_create_order(
         ctx.accounts.input_mint.decimals,
     )?;
 
+    if create_order_fee > 0 {
+        transfer_from_user_to_token_account(
+            ctx.accounts.maker_ata.to_account_info(),
+            ctx.accounts.input_fee_vault.to_account_info(),
+            ctx.accounts.maker.to_account_info(),
+            ctx.accounts.input_mint.to_account_info(),
+            ctx.accounts.input_token_program.to_account_info(),
+            create_order_fee,
+            ctx.accounts.input_mint.decimals,
+        )?;
+    }
     if lamports > 0 {
         let maker = ctx.accounts.maker.key();
         let gc = ctx.accounts.global_config.key();
@@ -209,6 +221,14 @@ pub struct CreateOrder<'info> {
         token::authority = pda_authority
     )]
     pub input_vault: Box<InterfaceAccount<'info, TokenAccount>>,
+
+    #[account(mut,
+        seeds = [seeds::FEE_VAULT, global_config.key().as_ref(), input_mint.key().as_ref()],
+        bump,
+        token::mint = input_mint,
+        token::authority = pda_authority
+    )]
+    pub input_fee_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(mut,
         seeds = [seeds::ESCROW_VAULT, global_config.key().as_ref(), output_mint.key().as_ref()],

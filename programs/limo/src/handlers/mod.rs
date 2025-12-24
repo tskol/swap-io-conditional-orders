@@ -12,6 +12,7 @@ pub mod update_global_config_admin;
 pub mod update_order;
 pub mod update_oracle_pool;
 pub mod withdraw_host_tip;
+pub mod withdraw_fee;
 
 pub use assert_user_swap_balances::*;
 pub use close_order_and_claim_tip::*;
@@ -27,3 +28,4 @@ pub use update_global_config_admin::*;
 pub use update_order::*;
 pub use withdraw_host_tip::*;
 pub use update_oracle_pool::*;
+pub use withdraw_fee::*;
