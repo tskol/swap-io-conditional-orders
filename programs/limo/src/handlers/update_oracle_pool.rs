@@ -1,5 +1,5 @@
 use anchor_lang::{prelude::*, Accounts};
-use anchor_spl::token_interface::{Mint, TokenInterface};
+use anchor_spl::token_interface::{Mint};
 
 use crate::{
     operations,
