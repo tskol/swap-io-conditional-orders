@@ -75,7 +75,8 @@ pub fn handler_create_order(
         require!(tp_output_amount > 0 || sl_output_amount > 0, LimoError::OrderParametersInvalid);
         ctx.accounts.output_vault.as_ref().ok_or(LimoError::InvalidAccount)?;
         if tp_output_amount > 0 {
-            let tp_order = &mut ctx.accounts.tp_order.load_init()?;
+            let tp_order_account = ctx.accounts.tp_order.as_ref().ok_or(LimoError::InvalidAccount)?;
+            let tp_order = &mut tp_order_account.load_init()?;
             operations::create_order(
                 tp_order,
                 ctx.accounts.global_config.key(),
@@ -91,10 +92,11 @@ pub fn handler_create_order(
                 ctx.bumps.output_vault,
                 clock.unix_timestamp,
             )?;
-            order.tp_child_order = ctx.accounts.tp_order.key();
+            order.tp_child_order = tp_order_account.key();
         }
         if sl_output_amount > 0 {
-            let sl_order = &mut ctx.accounts.sl_order.load_init()?;
+            let sl_order_account = ctx.accounts.sl_order.as_ref().ok_or(LimoError::InvalidAccount)?;
+            let sl_order = &mut sl_order_account.load_init()?;
             operations::create_order(
                 sl_order,
                 ctx.accounts.global_config.key(),
@@ -110,7 +112,7 @@ pub fn handler_create_order(
                 ctx.bumps.output_vault,
                 clock.unix_timestamp,
             )?;
-            order.sl_child_order = ctx.accounts.sl_order.key();
+            order.sl_child_order = sl_order_account.key();
         }
     }
 
@@ -193,10 +195,10 @@ pub struct CreateOrder<'info> {
     pub order: AccountLoader<'info, Order>,
 
     #[account(zero)]
-    pub tp_order: AccountLoader<'info, Order>,
+    pub tp_order: Option<AccountLoader<'info, Order>>,
 
     #[account(zero)]
-    pub sl_order: AccountLoader<'info, Order>,
+    pub sl_order: Option<AccountLoader<'info, Order>>,
 
     #[account(
         mint::token_program = input_token_program,
