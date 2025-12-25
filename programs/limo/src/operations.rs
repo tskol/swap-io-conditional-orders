@@ -267,9 +267,9 @@ pub fn take_order_calcs(
     );
 
     let input_to_send_to_taker = input_amount;
-    let minimum_output_to_send_to_maker_u128 = (u128::from(input_to_send_to_taker)
-        * u128::from(order.expected_output_amount))
-    .div_ceil(u128::from(order.initial_input_amount));
+    let numerator = u128::from(input_to_send_to_taker) * u128::from(order.expected_output_amount);
+    let denominator = u128::from(order.initial_input_amount);
+    let minimum_output_to_send_to_maker_u128 = (numerator + denominator - 1) / denominator;
 
     let minimum_output_to_send_to_maker = u64::try_from(minimum_output_to_send_to_maker_u128)
         .map_err(|_| dbg_msg!(LimoError::MathOverflow))?;
@@ -556,18 +556,20 @@ fn update_take_child_order_accounting_and_tips(
             .get_price_no_older_than(&anchor_clock, global_config.oracle_max_staleness_seconds, &output_feed_id)
             .map_err(|_| LimoError::InvalidAccount)?;
 
-        let mut expected_output_usd_price = u64::try_from((u128::from(input_to_send_to_taker)
-            * u128::from(order.expected_output_amount))
-            .div_ceil(u128::from(order.initial_input_amount))
+        let numerator1 = u128::from(input_to_send_to_taker) * u128::from(order.expected_output_amount);
+        let denominator1 = u128::from(order.initial_input_amount);
+        let div_ceil_result1 = (numerator1 + denominator1 - 1) / denominator1;
+        let mut expected_output_usd_price = u64::try_from(div_ceil_result1
             .checked_mul(u128::from(output_price.price as u64))
             .unwrap()
             .checked_div(10_u128.pow(output_price.exponent.abs().try_into().unwrap()))
             .unwrap())
             .map_err(|_| dbg_msg!(LimoError::MathOverflow))?;
 
-        let mut expected_input_usd_price = u64::try_from((u128::from(input_to_send_to_taker)
-            * u128::from(input_price.price as u64))
-            .div_ceil(u128::from(10_u128.pow(input_price.exponent.abs().try_into().unwrap()))))
+        let numerator2 = u128::from(input_to_send_to_taker) * u128::from(input_price.price as u64);
+        let denominator2 = 10_u128.pow(input_price.exponent.abs().try_into().unwrap());
+        let div_ceil_result2 = (numerator2 + denominator2 - 1) / denominator2;
+        let mut expected_input_usd_price = u64::try_from(div_ceil_result2)
             .map_err(|_| dbg_msg!(LimoError::MathOverflow))?;
 
         if input_decimals > output_decimals {

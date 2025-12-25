@@ -1,4 +1,3 @@
-#![feature(int_roundings)]
 use std::num::TryFromIntError;
 
 use anchor_lang::prelude::*;
