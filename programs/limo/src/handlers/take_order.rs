@@ -1,6 +1,6 @@
 use anchor_lang::{prelude::*, Accounts};
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
-use express_relay::{program::ExpressRelay, state::ExpressRelayMetadata};
+// use express_relay::{program::ExpressRelay, state::ExpressRelayMetadata};
 use solana_program::sysvar::{instructions::Instructions as SysInstructions, SysvarId};
 use pyth_solana_receiver_sdk::price_update::{PriceUpdateV2};
 
@@ -11,7 +11,8 @@ use crate::{
         native_transfer_from_authority_to_user, native_transfer_from_user_to_account,
         transfer_from_user_to_token_account, transfer_from_vault_to_token_account,
     }, utils::constraints::{
-        check_permission_express_relay_and_get_fees, is_counterparty_matching, is_wsol,
+        // check_permission_express_relay_and_get_fees,
+        is_counterparty_matching, is_wsol,
         token_2022::validate_token_extensions, verify_ata,
     }
 };
@@ -301,11 +302,11 @@ pub struct TakeOrder<'info> {
     )]
     pub maker_output_ata: Option<Box<InterfaceAccount<'info, TokenAccount>>>,
 
-    #[account(address = express_relay::ID)]
-    pub express_relay: Program<'info, ExpressRelay>,
+    // #[account(address = express_relay::ID)]
+    // pub express_relay: Program<'info, ExpressRelay>,
 
-    #[account(seeds = [express_relay::state::SEED_METADATA], bump, seeds::program = express_relay.key())]
-    pub express_relay_metadata: Account<'info, ExpressRelayMetadata>,
+    // #[account(seeds = [express_relay::state::SEED_METADATA], bump, seeds::program = express_relay.key())]
+    // pub express_relay_metadata: Account<'info, ExpressRelayMetadata>,
 
     #[account(address = SysInstructions::id())]
     /// CHECK: SysInstructions is a valid sysvar
@@ -313,9 +314,9 @@ pub struct TakeOrder<'info> {
 
     pub permission: Option<AccountInfo<'info>>,
 
-    #[account(seeds = [express_relay::state::SEED_CONFIG_ROUTER, pda_authority.key().as_ref()], bump, seeds::program = express_relay.key())]
-    /// CHECK: config_router is a valid account
-    pub config_router: UncheckedAccount<'info>,
+    // #[account(seeds = [express_relay::state::SEED_CONFIG_ROUTER, pda_authority.key().as_ref()], bump, seeds::program = express_relay.key())]
+    // /// CHECK: config_router is a valid account
+    // pub config_router: UncheckedAccount<'info>,
 
     pub input_token_program: Interface<'info, TokenInterface>,
     pub output_token_program: Interface<'info, TokenInterface>,
@@ -343,15 +344,16 @@ fn check_permission_and_get_tip(
     let tip = if !is_filled_by_per {
         tip_amount_permissionless_taking
     } else {
-        check_permission_express_relay_and_get_fees(
-            &ctx.accounts.sysvar_instructions,
-            ctx.accounts.permission.as_ref().unwrap(),
-            &ctx.accounts.pda_authority,
-            &ctx.accounts.config_router,
-            &ctx.accounts.express_relay_metadata.to_account_info(),
-            &ctx.accounts.express_relay,
-            ctx.accounts.order.key(),
-        )?
+        // check_permission_express_relay_and_get_fees(
+        //     &ctx.accounts.sysvar_instructions,
+        //     ctx.accounts.permission.as_ref().unwrap(),
+        //     &ctx.accounts.pda_authority,
+        //     &ctx.accounts.config_router,
+        //     &ctx.accounts.express_relay_metadata.to_account_info(),
+        //     &ctx.accounts.express_relay,
+        //     ctx.accounts.order.key(),
+        // )?
+        return err!(LimoError::ExpressRelayDisabled);
     };
 
     Ok(tip)

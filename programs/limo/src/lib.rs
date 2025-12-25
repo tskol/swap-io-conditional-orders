@@ -202,6 +202,9 @@ pub mod limo {
 #[error_code]
 #[derive(Error, PartialEq, Eq, TryFromPrimitive)]
 pub enum LimoError {
+    #[msg("Express relay disabled")]
+    ExpressRelayDisabled,
+
     #[msg("Invalid feed id")]
     InvalidFeedId,
 
