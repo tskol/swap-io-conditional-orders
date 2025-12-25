@@ -202,6 +202,9 @@ pub mod limo {
 #[error_code]
 #[derive(Error, PartialEq, Eq, TryFromPrimitive)]
 pub enum LimoError {
+    #[msg("Invalid feed id")]
+    InvalidFeedId,
+
     #[msg("Invalid BPS value, must be between 0 and 10000")]
     InvalidBps,
 

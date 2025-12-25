@@ -35,6 +35,8 @@ pub fn initialize_global_config(
     global_config.total_tip_amount = 0;
     global_config.host_tip_amount = 0;
     global_config.pda_authority_previous_lamports_balance = pda_authority_previous_lamports_balance;
+    global_config.tp_sl_enabled = 1;
+    global_config.oracle_max_staleness_seconds = 30;
 }
 
 pub fn initialize_oracle_pool(
@@ -42,19 +44,25 @@ pub fn initialize_oracle_pool(
     global_config: Pubkey,
     feed_id: String,
     token_mint: Pubkey,
-    bump: u8,
-) {
+) -> Result<()> {
+    let feed_id_bytes = get_feed_id_from_hex(&feed_id)
+        .map_err(|_| LimoError::InvalidFeedId)?;
     oracle_pool.global_config = global_config;
-    oracle_pool.oracle_feed_id = feed_id;
+    oracle_pool.oracle_feed_id = feed_id_bytes;
     oracle_pool.token_mint = token_mint;
-    oracle_pool.bump = bump;
+
+    Ok(())
 }
 
 pub fn update_oracle_pool(
     oracle_pool: &mut OraclePoolsState,
     feed_id: String,
-) {
-    oracle_pool.oracle_feed_id = feed_id;
+) -> Result<()> {
+    let feed_id_bytes = get_feed_id_from_hex(&feed_id)
+        .map_err(|_| LimoError::InvalidFeedId)?;
+    oracle_pool.oracle_feed_id = feed_id_bytes;
+
+    Ok(())
 }
 
 pub fn create_order(
@@ -545,15 +553,11 @@ fn update_take_child_order_accounting_and_tips(
         let output_price_update = output_price_update.ok_or(LimoError::InvalidAccount)?;
         let anchor_clock = Clock::get()?;
 
-        let input_feed_id = get_feed_id_from_hex(&input_oracle_pool.oracle_feed_id)
-            .map_err(|_| LimoError::InvalidAccount)?;
         let input_price = input_price_update
-            .get_price_no_older_than(&anchor_clock, global_config.oracle_max_staleness_seconds, &input_feed_id)
-            .map_err(|_| LimoError::InvalidAccount)?;
-        let output_feed_id = get_feed_id_from_hex(&output_oracle_pool.oracle_feed_id)
+            .get_price_no_older_than(&anchor_clock, global_config.oracle_max_staleness_seconds, &input_oracle_pool.oracle_feed_id)
             .map_err(|_| LimoError::InvalidAccount)?;
         let output_price = output_price_update
-            .get_price_no_older_than(&anchor_clock, global_config.oracle_max_staleness_seconds, &output_feed_id)
+            .get_price_no_older_than(&anchor_clock, global_config.oracle_max_staleness_seconds, &output_oracle_pool.oracle_feed_id)
             .map_err(|_| LimoError::InvalidAccount)?;
 
         let numerator1 = u128::from(input_to_send_to_taker) * u128::from(order.expected_output_amount);

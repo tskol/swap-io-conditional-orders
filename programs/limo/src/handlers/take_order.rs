@@ -128,6 +128,18 @@ pub fn handler_take_order(
         .as_ref()
         .map(|bo| bo.load_mut())
         .transpose()?;
+    let input_oracle_pool = ctx
+        .accounts
+        .input_oracle_pool
+        .as_ref()
+        .map(|io| io.load())
+        .transpose()?;
+    let output_oracle_pool = ctx
+        .accounts
+        .output_oracle_pool
+        .as_ref()
+        .map(|oo| oo.load())
+        .transpose()?;
 
     let TakeOrderEffects {
         input_to_send_to_taker,
@@ -138,8 +150,8 @@ pub fn handler_take_order(
         order,
         parent_order_mut.as_deref_mut(),
         brother_order_mut.as_deref_mut(),
-        ctx.accounts.input_oracle_pool.as_deref(),
-        ctx.accounts.output_oracle_pool.as_deref(),
+        input_oracle_pool.as_deref(),
+        output_oracle_pool.as_deref(),
         ctx.accounts.input_price_update.as_deref(),
         ctx.accounts.output_price_update.as_deref(),
         ctx.accounts.input_mint.decimals,
@@ -251,15 +263,15 @@ pub struct TakeOrder<'info> {
 
     #[account(mut,
         seeds = [seeds::ORACLE_POOL, output_mint.key().as_ref()],
-        bump = output_oracle_pool.bump,
+        bump
     )]
-    pub output_oracle_pool: Option<Account<'info, OraclePoolsState>>,
+    pub output_oracle_pool: Option<AccountLoader<'info, OraclePoolsState>>,
 
     #[account(mut,
         seeds = [seeds::ORACLE_POOL, input_mint.key().as_ref()],
-        bump = input_oracle_pool.bump,
+        bump
     )]
-    pub input_oracle_pool: Option<Account<'info, OraclePoolsState>>,
+    pub input_oracle_pool: Option<AccountLoader<'info, OraclePoolsState>>,
 
     pub input_price_update: Option<Account<'info, PriceUpdateV2>>,
 

@@ -153,13 +153,12 @@ pub struct UserSwapBalanceDiffs {
 
 #[derive(PartialEq, Derivative)]
 #[derivative(Debug)]
-#[account()]
+#[account(zero_copy)]
 pub struct OraclePoolsState {
     pub global_config: Pubkey,
 
-    pub oracle_feed_id: String,
+    pub oracle_feed_id: [u8; 32],
     pub token_mint: Pubkey,
-    pub bump: u8,
 }
 
 #[derive(PartialEq, Derivative)]

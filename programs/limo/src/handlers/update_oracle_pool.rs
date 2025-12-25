@@ -11,9 +11,9 @@ pub fn handler_update_oracle_pool(
     ctx: Context<UpdateOraclePool>,
     feed_id: String,
 ) -> Result<()> {
-    let oracle_pool = &mut ctx.accounts.oracle_pool;
+    let oracle_pool = &mut ctx.accounts.oracle_pool.load_mut()?;
 
-    operations::update_oracle_pool(oracle_pool, feed_id);
+    operations::update_oracle_pool(oracle_pool, feed_id)?;
 
     Ok(())
 }
@@ -30,9 +30,9 @@ pub struct UpdateOraclePool<'info> {
     #[account(mut,
         has_one = global_config,
         seeds = [seeds::ORACLE_POOL, token_mint.key().as_ref()],
-        bump = oracle_pool.bump,
+        bump
     )]
-    pub oracle_pool: Account<'info, OraclePoolsState>,
+    pub oracle_pool: AccountLoader<'info, OraclePoolsState>,
 
     pub token_mint: Box<InterfaceAccount<'info, Mint>>,
 }
