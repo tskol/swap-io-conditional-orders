@@ -41,12 +41,12 @@ pub fn handler_create_order(
     } else {
         require!(gc_state.tp_sl_enabled == 1, LimoError::TPSLNotEnabled);
         require!(tp_output_amount > 0 || sl_output_amount > 0, LimoError::OrderParametersInvalid);
-        let tp_sl_min_distance = output_amount.checked_mul(gc_state.tp_sl_min_distance_bps.try_into().unwrap()).unwrap() / FULL_BPS;
+        let tp_sl_min_distance = input_amount.checked_mul(gc_state.tp_sl_min_distance_bps.try_into().unwrap()).unwrap().checked_div(FULL_BPS).unwrap_or(0);
         if tp_output_amount > 0 {
-            require!(tp_output_amount >= output_amount.checked_add(tp_sl_min_distance).unwrap(), LimoError::TPSLMinDistanceNotMet);
+            require!(tp_output_amount >= input_amount.checked_add(tp_sl_min_distance).unwrap(), LimoError::TPSLMinDistanceNotMet);
         }
         if sl_output_amount > 0 {
-            require!(sl_output_amount >= output_amount.checked_sub(tp_sl_min_distance).unwrap(), LimoError::TPSLMinDistanceNotMet);
+            require!(sl_output_amount <= input_amount.checked_sub(tp_sl_min_distance).unwrap(), LimoError::TPSLMinDistanceNotMet);
         }
     }
     let create_order_fee = operations::calculate_fee_amount(input_amount, gc_state.create_order_fee_bps)?;
