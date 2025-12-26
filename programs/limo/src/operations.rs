@@ -331,10 +331,10 @@ pub fn take_order_calcs(
 pub fn take_order(
     global_config: &mut GlobalConfig,
     order: &mut Order,
-    parent_order: Option<&mut Order>,
-    brother_order: Option<&mut Order>,
-    input_oracle_pool: Option<&OraclePoolsState>,
-    output_oracle_pool: Option<&OraclePoolsState>,
+    parent_order: Option<&AccountLoader<Order>>,
+    brother_order: Option<&AccountLoader<Order>>,
+    input_oracle_pool: Option<&AccountLoader<OraclePoolsState>>,
+    output_oracle_pool: Option<&AccountLoader<OraclePoolsState>>,
     input_price_update: Option<&PriceUpdateV2>,
     output_price_update: Option<&PriceUpdateV2>,
     input_decimals: u8,
@@ -358,11 +358,12 @@ pub fn take_order(
     let is_child_order = order.parent_order != Pubkey::default();
 
     if is_child_order {
-        let parent_order = parent_order.ok_or(LimoError::InvalidAccount)?;
+        let parent_order_loader = parent_order.ok_or(LimoError::InvalidAccount)?;
+        let mut parent_order = parent_order_loader.load_mut()?;
         update_take_child_order_accounting_and_tips(
             global_config,
             order,
-            parent_order,
+            &mut parent_order,
             brother_order,
             input_oracle_pool,
             output_oracle_pool,
@@ -529,9 +530,9 @@ fn update_take_child_order_accounting_and_tips(
     global_config: &mut GlobalConfig,
     order: &mut Order,
     parent_order: &mut Order,
-    brother_order: Option<&mut Order>,
-    input_oracle_pool: Option<&OraclePoolsState>,
-    output_oracle_pool: Option<&OraclePoolsState>,
+    brother_order: Option<&AccountLoader<Order>>,
+    input_oracle_pool: Option<&AccountLoader<OraclePoolsState>>,
+    output_oracle_pool: Option<&AccountLoader<OraclePoolsState>>,
     input_price_update: Option<&PriceUpdateV2>,
     output_price_update: Option<&PriceUpdateV2>,
     input_decimals: u8,
@@ -547,8 +548,10 @@ fn update_take_child_order_accounting_and_tips(
         .checked_sub(input_to_send_to_taker)
         .ok_or_else(|| dbg_msg!(LimoError::MathOverflow))?;
     if order.order_type == OrderType::LimitSL as u8 {
-        let input_oracle_pool = input_oracle_pool.ok_or(LimoError::InvalidAccount)?;
-        let output_oracle_pool = output_oracle_pool.ok_or(LimoError::InvalidAccount)?;
+        let input_oracle_pool_loader = input_oracle_pool.ok_or(LimoError::InvalidAccount)?;
+        let output_oracle_pool_loader = output_oracle_pool.ok_or(LimoError::InvalidAccount)?;
+        let input_oracle_pool = input_oracle_pool_loader.load()?;
+        let output_oracle_pool = output_oracle_pool_loader.load()?;
         let input_price_update = input_price_update.ok_or(LimoError::InvalidAccount)?;
         let output_price_update = output_price_update.ok_or(LimoError::InvalidAccount)?;
         let anchor_clock = Clock::get()?;
@@ -602,6 +605,7 @@ fn update_take_child_order_accounting_and_tips(
     if parent_order.status == OrderStatus::Filled as u8 && parent_order.available_child_input_amount == 0 {
         order.status = OrderStatus::Filled as u8;
         if let Some(brother_order) = brother_order {
+            let mut brother_order = brother_order.load_mut()?;
             brother_order.status = OrderStatus::Filled as u8;
         }
     }

@@ -80,28 +80,6 @@ pub fn handler_take_order(
             }
         }
 
-        // Parent order: validate TP/SL child accounts iff their pubkeys are set on-chain.
-        if order.tp_child_order != Pubkey::default() {
-            require!(
-                ctx.accounts
-                    .tp_child_order
-                    .as_ref()
-                    .map(|tpo| tpo.key() == order.tp_child_order)
-                    .unwrap_or(false),
-                LimoError::InvalidAccount
-            );
-        }
-        if order.sl_child_order != Pubkey::default() {
-            require!(
-                ctx.accounts
-                    .sl_child_order
-                    .as_ref()
-                    .map(|slo| slo.key() == order.sl_child_order)
-                    .unwrap_or(false),
-                LimoError::InvalidAccount
-            );
-        }
-
         (order.permissionless != 0, order.counterparty)
     };
 
@@ -116,32 +94,6 @@ pub fn handler_take_order(
     let order = &mut ctx.accounts.order.load_mut()?;
     let clock = Clock::get()?;
 
-    // Load optional accounts only if provided, and pass through as Option<&mut Order>.
-    let mut parent_order_mut = ctx
-        .accounts
-        .parent_order
-        .as_ref()
-        .map(|po| po.load_mut())
-        .transpose()?;
-    let mut brother_order_mut = ctx
-        .accounts
-        .brother_order
-        .as_ref()
-        .map(|bo| bo.load_mut())
-        .transpose()?;
-    let input_oracle_pool = ctx
-        .accounts
-        .input_oracle_pool
-        .as_ref()
-        .map(|io| io.load())
-        .transpose()?;
-    let output_oracle_pool = ctx
-        .accounts
-        .output_oracle_pool
-        .as_ref()
-        .map(|oo| oo.load())
-        .transpose()?;
-
     let TakeOrderEffects {
         input_to_send_to_taker,
         output_to_send_to_maker,
@@ -149,10 +101,10 @@ pub fn handler_take_order(
     } = operations::take_order(
         global_config,
         order,
-        parent_order_mut.as_deref_mut(),
-        brother_order_mut.as_deref_mut(),
-        input_oracle_pool.as_deref(),
-        output_oracle_pool.as_deref(),
+        ctx.accounts.parent_order.as_ref(),
+        ctx.accounts.brother_order.as_ref(),
+        ctx.accounts.input_oracle_pool.as_ref(),
+        ctx.accounts.output_oracle_pool.as_ref(),
         ctx.accounts.input_price_update.as_deref(),
         ctx.accounts.output_price_update.as_deref(),
         ctx.accounts.input_mint.decimals,
@@ -166,6 +118,7 @@ pub fn handler_take_order(
     transfer_output_and_input(
         &ctx,
         global_config,
+        order.order_type,
         input_to_send_to_taker,
         output_to_send_to_maker,
         output_to_send_to_protocol,
@@ -220,10 +173,6 @@ pub struct TakeOrder<'info> {
 
     #[account(mut)]
     pub parent_order: Option<AccountLoader<'info, Order>>,
-
-    pub tp_child_order: Option<AccountLoader<'info, Order>>,
-     
-    pub sl_child_order: Option<AccountLoader<'info, Order>>,
 
     #[account(mut)]
     pub brother_order: Option<AccountLoader<'info, Order>>,
@@ -362,6 +311,7 @@ fn check_permission_and_get_tip(
 fn transfer_output_and_input(
     ctx: &Context<TakeOrder>,
     global_config: &mut GlobalConfig,
+    order_type: u8,
     input_to_send_to_taker: u64,
     output_to_send_to_maker: u64,
     output_to_send_to_protocol: u64,
@@ -370,7 +320,7 @@ fn transfer_output_and_input(
     let seeds: &[&[u8]] = global_seeds!(global_config.pda_authority_bump as u8, &gc);
 
     let output_is_wsol = is_wsol(&ctx.accounts.output_mint.key());
-    let order_is_limit_parent = ctx.accounts.order.load()?.order_type == OrderType::LimitParent as u8;
+    let order_is_limit_parent = order_type == OrderType::LimitParent as u8;
     let output_destination_token_account = if order_is_limit_parent {
         let output_vault = ctx.accounts.output_vault.as_ref().ok_or(LimoError::OutputVaultRequired)?;
         output_vault.to_account_info()
