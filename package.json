@@ -1,0 +1,21 @@
+{
+  "name": "swap-io-limits-bch",
+  "version": "1.0.0",
+  "license": "ISC",
+  "devDependencies": {
+    "@coral-xyz/anchor": "^0.29.0",
+    "@pythnetwork/price-service-client": "^1.10.0",
+    "@pythnetwork/pyth-solana-receiver": "^0.13.0",
+    "@solana/spl-memo": "^0.2.5",
+    "@solana/spl-token": "^0.4.14",
+    "@types/bn.js": "^5.2.0",
+    "@types/chai": "^5.2.3",
+    "@types/mocha": "^10.0.10",
+    "chai": "^6.2.2",
+    "mocha": "^11.7.5",
+    "ts-mocha": "^11.1.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.50.1"
+  }
+}
