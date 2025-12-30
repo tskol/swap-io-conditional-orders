@@ -21,11 +21,7 @@ use utils::{
 use crate::handlers::*;
 pub use crate::state::*;
 
-#[cfg(feature = "staging")]
-declare_id!("xsbVMMZVEK4AE8vgei9coAwjkXU8kqa947WNo9saVNj");
-
-#[cfg(not(feature = "staging"))]
-declare_id!("xsbVMMZVEK4AE8vgei9coAwjkXU8kqa947WNo9saVNj");
+declare_id!("6b2ieZ8k2t6yxD6wS24Zq5tb9QqtivfvXUKKntdByDEk");
 
 #[cfg(not(feature = "no-entrypoint"))]
 solana_security_txt::security_txt! {
