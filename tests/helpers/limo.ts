@@ -12,7 +12,7 @@ import {
 } from "@pythnetwork/price-service-client";
 import {
   InstructionWithEphemeralSigners,
-  PythSolanaReceiver,
+  // PythSolanaReceiver,
 } from "@pythnetwork/pyth-solana-receiver";
 import { TransactionSender } from "./transaction-sender";
 import { ProgramUtils } from "./program-utils";
@@ -480,10 +480,10 @@ export class LimoHelper extends TransactionSender {
         );
 
         // if (orderAccount.orderType === OrderType.LimitSL) {
-          const pyth = new PythSolanaReceiver({
-            connection: this.provider.connection,
-            wallet: args.taker,
-          });
+          // const pyth = new PythSolanaReceiver({
+          //   connection: this.provider.connection,
+          //   wallet: args.taker,
+          // });
 
         //   const inputOraclePoolAccount = await this.getOraclePoolAccount(inputMint);
         //   const outputOraclePoolAccount = await this.getOraclePoolAccount(outputMint);

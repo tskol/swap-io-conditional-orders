@@ -576,7 +576,6 @@ describe("Type B Parent Limit Orders", () => {
 
             expect(orderAccount.availableChildInputAmount.toString()).to.equal(orderOutputAmount.sub(fillInputAmount).toString());
 
-            console.log("STABLE_PRICE_FEED", STABLE_PRICE_FEED);
             await expectRejects(limoHelper.takeOrder({
                 taker: takerWallet,
                 order: slOrder,
