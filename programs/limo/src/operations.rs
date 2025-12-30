@@ -495,6 +495,13 @@ fn update_take_order_accounting_and_tips(
         .checked_add(output_to_send_to_maker)
         .ok_or_else(|| dbg_msg!(LimoError::MathOverflow))?;
 
+    if order.order_type == OrderType::LimitParent as u8 {
+        order.available_child_input_amount = order
+            .available_child_input_amount
+            .checked_add(output_to_send_to_maker)
+            .ok_or_else(|| dbg_msg!(LimoError::MathOverflow))?;
+    }
+
     let TipCalcs {
         host_tip,
         maker_tip,
@@ -602,8 +609,7 @@ fn update_take_child_order_accounting_and_tips(
         current_timestamp
     )?;
 
-    if parent_order.status == OrderStatus::Filled as u8 && parent_order.available_child_input_amount == 0 {
-        order.status = OrderStatus::Filled as u8;
+    if parent_order.status == OrderStatus::Filled as u8 && order.status == OrderStatus::Filled as u8 {
         if let Some(brother_order) = brother_order {
             let mut brother_order = brother_order.load_mut()?;
             brother_order.status = OrderStatus::Filled as u8;
