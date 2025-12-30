@@ -17,3 +17,9 @@ wallet = "/home/vitaliy/.config/solana/id.json"
 
 [scripts]
 test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/*.ts"
+initializeGlobalConfig = "yarn run ts-node ./scripts/initializeGlobalConfig.ts"
+InitializeVault = "yarn run ts-node ./scripts/InitializeVault.ts"
+InitializeOraclePool = "yarn run ts-node ./scripts/InitializeOraclePool.ts"
+CreateOrder = "yarn run ts-node ./scripts/CreateOrder.ts"
+TakeOrder = "yarn run ts-node ./scripts/TakeOrder.ts"
+CloseOrder = "yarn run ts-node ./scripts/CloseOrder.ts"

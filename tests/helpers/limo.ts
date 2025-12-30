@@ -111,6 +111,10 @@ export class LimoHelper extends TransactionSender {
         return this.globalConfig;
     }
 
+    setGlobalConfig(globalConfig: web3.PublicKey) {
+      this.globalConfig = globalConfig;
+    }
+
     async getGlobalConfigAccount(): Promise<GlobalConfigAccount> {
       return await this.program.account.globalConfig.fetch(this.globalConfig);
     }
@@ -678,4 +682,11 @@ export class LimoHelper extends TransactionSender {
         const { signature } = await this.sendTransaction(args.maker, [ix]);
         return { signature };
       }
+
+      async calcOrderMinOutputAmount(inputAmount: BN, order: web3.PublicKey): Promise<BN> {
+        const orderAccount = await this.getOrderAccount(order);
+        const numerator = new BN(inputAmount).mul(orderAccount.expectedOutputAmount);
+        const denominator = orderAccount.initialInputAmount;
+        return numerator.add(denominator).sub(new BN(1)).div(denominator);
+    }
 }
