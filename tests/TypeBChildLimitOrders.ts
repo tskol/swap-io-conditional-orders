@@ -41,7 +41,7 @@ export async function initializeLimo(
   };
 }
 
-describe.skip("Type B Child Limit Orders", () => {
+describe("Type B Child Limit Orders", () => {
     const commitment: web3.Commitment = "confirmed";
     const envProvider = anchor.AnchorProvider.env();
     const connection = new web3.Connection(

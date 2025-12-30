@@ -34,7 +34,7 @@ export async function initializeLimo(
   };
 }
 
-describe.skip("Initialize", () => {
+describe("Initialize", () => {
     const commitment: web3.Commitment = "confirmed";
     const envProvider = anchor.AnchorProvider.env();
     const connection = new web3.Connection(
