@@ -171,10 +171,18 @@ pub struct CloseOrderAndClaimTip<'info> {
     )]
     pub order: AccountLoader<'info, Order>,
 
-    #[account(mut)]
+    #[account(mut,
+        has_one = maker,
+        has_one = global_config,
+        close = maker,
+    )]
     pub tp_child_order: Option<AccountLoader<'info, Order>>,
     
-    #[account(mut)]
+    #[account(mut,
+        has_one = maker,
+        has_one = global_config,
+        close = maker,
+    )]
     pub sl_child_order: Option<AccountLoader<'info, Order>>,
 
     #[account(
