@@ -88,8 +88,8 @@ pub fn is_wsol(mint: &Pubkey) -> bool {
     *mint == token::spl_token::native_mint::ID
 }
 
-pub fn is_counterparty_matching(counterparty: &Pubkey, taker: &Pubkey) -> bool {
-    counterparty.eq(&Pubkey::default()) || taker == counterparty
+pub fn is_counterparty_matching(counterparty: &Pubkey, allowed_taker: &Pubkey, taker: &Pubkey) -> bool {
+    counterparty.eq(&Pubkey::default()) && allowed_taker == taker || taker == counterparty
 }
 
 pub mod token_2022 {

@@ -434,6 +434,10 @@ pub fn update_global_config(
             let value = Pubkey::new_from_array(value[0..32].try_into().unwrap());
             update_global_config_pubkey(global_config, mode, value, ts)?
         }
+        UpdateGlobalConfigMode::UpdateAllowedTaker => {
+            let value = Pubkey::new_from_array(value[0..32].try_into().unwrap());
+            update_global_config_pubkey(global_config, mode, value, ts)?
+        }
         UpdateGlobalConfigMode::UpdateTxnFeeCost => {
             let value = u64::from_le_bytes(value[0..8].try_into().unwrap());
             msg!("update_global_config mode={:?} ts={}", mode, ts);
@@ -742,6 +746,14 @@ fn update_global_config_pubkey(
                 global_config.admin_authority_cached,
             );
             global_config.admin_authority_cached = value;
+        }
+        UpdateGlobalConfigMode::UpdateAllowedTaker => {
+            msg!(
+                "new={} prev={}",
+                value,
+                global_config.allowed_taker,
+            );
+            global_config.allowed_taker = value;
         }
         _ => return Err(LimoError::InvalidConfigOption.into()),
     }

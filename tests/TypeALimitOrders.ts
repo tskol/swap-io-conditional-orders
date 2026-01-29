@@ -18,29 +18,6 @@ import { OrderStatus, OrderType, LimoError, UpdateGlobalConfigMode, UpdateOrderM
 export const STABLE_PRICE_FEED =
   "0x8b1e8e689fbb95ece35155a8b42cb9f1b14208a2f6507866a9a90e8dc955289a";
 
-const USDC_MINT = new web3.PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
-
-export async function initializeLimo(
-  provider: anchor.AnchorProvider,
-  payer: web3.Keypair,
-) {
-  const mainAccounts = generateRandomLimoAccounts();
-  const payerWallet = new anchor.Wallet(payer);
-
-  const limoHelper = new LimoHelper(provider);
-  
-  await limoHelper.initializeGlobalConfig({
-    payer: payerWallet,
-  });
-
-//   await airdrop(mainAccounts.publicKeys.admin);
-
-  return {
-    limoHelper,
-    mainAccounts,
-  };
-}
-
 describe("Type A Limit Orders", () => {
     const commitment: web3.Commitment = "confirmed";
     const envProvider = anchor.AnchorProvider.env();
@@ -384,6 +361,88 @@ describe("Type A Limit Orders", () => {
         });
 
         it("Should fully fill type A limit order", async () => {
+            const fillInputAmount = orderInputAmount;
+            const fillMinOutputAmount = await calcMinOutputAmount(fillInputAmount, order);
+
+            const makerInputAta = spl.getAssociatedTokenAddressSync(
+                inputMint,
+                maker.publicKey
+            );
+            const makerOutputAta = spl.getAssociatedTokenAddressSync(
+                outputMint,
+                maker.publicKey
+            );
+            const takerInputAta = spl.getAssociatedTokenAddressSync(
+                inputMint,
+                taker.publicKey
+            );
+            const takerOutputAta = spl.getAssociatedTokenAddressSync(
+                outputMint,
+                taker.publicKey
+            );
+            const { vault: inputVaultAta } = await limoHelper.getVault(inputMint);
+
+            const makerInputAtaBalanceBefore = await provider.connection.getTokenAccountBalance(makerInputAta);
+            const takerInputAtaBalanceBefore = await provider.connection.getTokenAccountBalance(takerInputAta);
+            const makerOutputAtaBalanceBefore = await provider.connection.getTokenAccountBalance(makerOutputAta);
+            const takerOutputAtaBalanceBefore = await provider.connection.getTokenAccountBalance(takerOutputAta);
+            const inputVaultAtaBalanceBefore = await provider.connection.getTokenAccountBalance(inputVaultAta);
+
+            const { signatures } = await limoHelper.takeOrder({
+                taker: takerWallet,
+                order: order,
+                inputAmount: fillInputAmount,
+                minOutputAmount: fillMinOutputAmount,
+                tipAmountPermissionlessTaking: new BN(0),
+            });
+
+            const makerInputAtaBalanceAfter = await provider.connection.getTokenAccountBalance(makerInputAta);
+            const takerInputAtaBalanceAfter = await provider.connection.getTokenAccountBalance(takerInputAta);
+            const makerOutputAtaBalanceAfter = await provider.connection.getTokenAccountBalance(makerOutputAta);
+            const takerOutputAtaBalanceAfter = await provider.connection.getTokenAccountBalance(takerOutputAta);
+            const inputVaultAtaBalanceAfter = await provider.connection.getTokenAccountBalance(inputVaultAta);
+
+            const orderAccount = await limoHelper.getOrderAccount(order);
+            const tx = await provider.connection.getParsedTransaction(signatures[0], { commitment: "confirmed", maxSupportedTransactionVersion: 0 });
+
+            expect(orderAccount.remainingInputAmount.toString()).to.equal(new BN(0).toString());
+            expect(orderAccount.filledOutputAmount.toString()).to.equal(orderOutputAmount.toString());
+            expect(orderAccount.expectedOutputAmount.toString()).to.equal(orderOutputAmount.toString());
+            expect(orderAccount.initialInputAmount.toString()).to.equal(orderInputAmount.toString());
+            expect(orderAccount.numberOfFills.toString()).to.equal(new BN(1).toString());
+            expect(orderAccount.lastUpdatedTimestamp.toString()).to.equal((tx?.blockTime ?? 0).toString());
+            expect(orderAccount.status).to.equal(OrderStatus.Filled);
+
+            expect(makerInputAtaBalanceAfter.value.amount).to.equal(makerInputAtaBalanceBefore.value.amount);
+            const expectedTakerInputAtaBalanceAfter = new BN(takerInputAtaBalanceBefore.value.amount).add(fillInputAmount).toString();
+            expect(takerInputAtaBalanceAfter.value.amount).to.equal(expectedTakerInputAtaBalanceAfter);
+            const expectedMakerOutputAtaBalanceAfter = new BN(makerOutputAtaBalanceBefore.value.amount).add(fillMinOutputAmount).toString();
+            expect(makerOutputAtaBalanceAfter.value.amount).to.equal(expectedMakerOutputAtaBalanceAfter);
+            const expectedTakerOutputAtaBalanceAfter = new BN(takerOutputAtaBalanceBefore.value.amount).sub(fillMinOutputAmount).toString();
+            expect(takerOutputAtaBalanceAfter.value.amount).to.equal(expectedTakerOutputAtaBalanceAfter);
+            const expectedInputVaultAtaBalanceAfter = new BN(inputVaultAtaBalanceBefore.value.amount).sub(fillInputAmount).toString();
+            expect(inputVaultAtaBalanceAfter.value.amount).to.equal(expectedInputVaultAtaBalanceAfter);
+        });
+
+        it("Should fully fill type A limit order without counterparty", async () => {
+            await limoHelper.updateOrder({
+                maker: makerWallet,
+                order: order,
+                mode: UpdateOrderMode.UpdatePermissionless,
+                value: new BN(0).toBuffer(),
+            });
+            await limoHelper.updateOrder({
+                maker: makerWallet,
+                order: order,
+                mode: UpdateOrderMode.UpdateCounterparty,
+                value: web3.PublicKey.default.toBuffer(),
+            });
+            await limoHelper.updateGlobalConfig({
+                payer: payerWallet,
+                mode: UpdateGlobalConfigMode.UpdateAllowedTaker,
+                value: Array.from(taker.publicKey.toBuffer()),
+            });
+
             const fillInputAmount = orderInputAmount;
             const fillMinOutputAmount = await calcMinOutputAmount(fillInputAmount, order);
 

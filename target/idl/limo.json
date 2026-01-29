@@ -465,12 +465,6 @@
           "isSigner": false
         },
         {
-          "name": "permission",
-          "isMut": false,
-          "isSigner": false,
-          "isOptional": true
-        },
-        {
           "name": "inputTokenProgram",
           "isMut": false,
           "isSigner": false
@@ -1157,6 +1151,10 @@
             "type": "publicKey"
           },
           {
+            "name": "allowedTaker",
+            "type": "publicKey"
+          },
+          {
             "name": "txnFeeCost",
             "type": "u64"
           },
@@ -1277,6 +1275,9 @@
           },
           {
             "name": "UpdateTpSlMinDistanceBps"
+          },
+          {
+            "name": "UpdateAllowedTaker"
           }
         ]
       }
@@ -1766,5 +1767,8 @@
       "name": "OrderParametersInvalid",
       "msg": "The order parameters are invalid"
     }
-  ]
+  ],
+  "metadata": {
+    "address": "6b2ieZ8k2t6yxD6wS24Zq5tb9QqtivfvXUKKntdByDEk"
+  }
 }

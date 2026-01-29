@@ -1,7 +1,7 @@
 export const PROGRAM_ID = "6b2ieZ8k2t6yxD6wS24Zq5tb9QqtivfvXUKKntdByDEk";
 export const PYTH_ENDPOINT = "https://hermes.pyth.network";
 
-export const GLOBAL_CONFIG_SIZE = 2192;
+export const GLOBAL_CONFIG_SIZE = 2224;
 export const ORDER_SIZE = 536;
 
 export const GLOBAL_AUTH_SEED = "authority";
@@ -52,6 +52,7 @@ export const UpdateGlobalConfigMode = {
     UpdateOracleMaxStalenessSeconds: 15,
     UpdateSlMaxUpwardDeviationBps: 16,
     UpdateTpSlMinDistanceBps: 17,
+    UpdateAllowedTaker: 18,
 }
 
 export const LimoError = {

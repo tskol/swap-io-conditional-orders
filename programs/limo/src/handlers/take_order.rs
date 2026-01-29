@@ -8,7 +8,7 @@ use crate::{
     LimoError, OrderDisplay, OrderType, global_seeds, intermediary_seeds, operations::{self, validate_pda_authority_balance_and_update_accounting}, seeds::{self, GLOBAL_AUTH, INTERMEDIARY_OUTPUT_TOKEN_ACCOUNT}, state::{GlobalConfig, Order, TakeOrderEffects, OraclePoolsState}, token_operations::{
         close_ata_accounts_with_signer_seeds,
         initialize_intermediary_token_account_with_signer_seeds,
-        native_transfer_from_authority_to_user, native_transfer_from_user_to_account,
+        native_transfer_from_authority_to_user,// native_transfer_from_user_to_account,
         transfer_from_user_to_token_account, transfer_from_vault_to_token_account,
     }, utils::constraints::{
         // check_permission_express_relay_and_get_fees,
@@ -43,9 +43,9 @@ pub fn handler_take_order(
     }
 
     let global_config = &mut ctx.accounts.global_config.load_mut()?;
-    let is_filled_by_per = ctx.accounts.permission.is_some();
+    // let is_filled_by_per = ctx.accounts.permission.is_some();
 
-    let (is_order_permissionless, counterparty) = {
+    let (_is_order_permissionless, counterparty) = {
         let order = &ctx.accounts.order.load()?;
 
         // Child order: require/validate parent, and validate brother iff it exists in the parent.
@@ -86,9 +86,10 @@ pub fn handler_take_order(
     let tip = check_permission_and_get_tip(
         &ctx,
         &counterparty,
+        &global_config.allowed_taker,
         tip_amount_permissionless_taking,
-        is_order_permissionless,
-        is_filled_by_per,
+        // is_order_permissionless,
+        // is_filled_by_per,
     )?;
 
     let order = &mut ctx.accounts.order.load_mut()?;
@@ -124,7 +125,12 @@ pub fn handler_take_order(
         output_to_send_to_protocol,
     )?;
 
-    tip_transfer_and_validation(&ctx, global_config, tip, is_filled_by_per)?;
+    tip_transfer_and_validation(
+        &ctx,
+        global_config,
+        tip,
+        // is_filled_by_per
+    )?;
 
     emit_cpi!(OrderDisplay {
         initial_input_amount: order.initial_input_amount,
@@ -261,7 +267,7 @@ pub struct TakeOrder<'info> {
     /// CHECK: SysInstructions is a valid sysvar
     pub sysvar_instructions: AccountInfo<'info>,
 
-    pub permission: Option<AccountInfo<'info>>,
+    // pub permission: Option<AccountInfo<'info>>,
 
     // #[account(seeds = [express_relay::state::SEED_CONFIG_ROUTER, pda_authority.key().as_ref()], bump, seeds::program = express_relay.key())]
     // /// CHECK: config_router is a valid account
@@ -278,21 +284,27 @@ pub struct TakeOrder<'info> {
 fn check_permission_and_get_tip(
     ctx: &Context<TakeOrder>,
     order_counterparty: &Pubkey,
+    allowed_taker: &Pubkey,
     tip_amount_permissionless_taking: u64,
-    is_order_permissionless: bool,
-    is_filled_by_per: bool,
+    // is_order_permissionless: bool,
+    // is_filled_by_per: bool,
 ) -> Result<u64> {
-    if !is_order_permissionless && !is_filled_by_per {
-        return err!(LimoError::PermissionRequiredPermissionlessNotEnabled);
-    }
+    // if !is_order_permissionless && !is_filled_by_per {
+    //     return err!(LimoError::PermissionRequiredPermissionlessNotEnabled);
+    // }
 
-    if !is_counterparty_matching(order_counterparty, &ctx.accounts.taker.key()) {
+    if !is_counterparty_matching(
+        order_counterparty,
+        allowed_taker,
+        &ctx.accounts.taker.key()
+    ) {
         return err!(LimoError::CounterpartyDisallowed);
     }
 
-    let tip = if !is_filled_by_per {
-        tip_amount_permissionless_taking
-    } else {
+    let tip = tip_amount_permissionless_taking;
+    // let tip = if !is_filled_by_per {
+    //     tip_amount_permissionless_taking
+    // } else {
         // check_permission_express_relay_and_get_fees(
         //     &ctx.accounts.sysvar_instructions,
         //     ctx.accounts.permission.as_ref().unwrap(),
@@ -302,8 +314,8 @@ fn check_permission_and_get_tip(
         //     &ctx.accounts.express_relay,
         //     ctx.accounts.order.key(),
         // )?
-        return err!(LimoError::ExpressRelayDisabled);
-    };
+        // return err!(LimoError::ExpressRelayDisabled);
+    // };
 
     Ok(tip)
 }
@@ -415,15 +427,15 @@ fn tip_transfer_and_validation(
     ctx: &Context<TakeOrder>,
     global_config: &mut GlobalConfig,
     tip: u64,
-    is_filled_by_per: bool,
+    // is_filled_by_per: bool,
 ) -> Result<()> {
-    if !is_filled_by_per {
-        native_transfer_from_user_to_account(
-            ctx.accounts.taker.to_account_info(),
-            ctx.accounts.pda_authority.to_account_info(),
-            tip,
-        )?;
-    }
+    // if !is_filled_by_per {
+    //     native_transfer_from_user_to_account(
+    //         ctx.accounts.taker.to_account_info(),
+    //         ctx.accounts.pda_authority.to_account_info(),
+    //         tip,
+    //     )?;
+    // }
 
     let pda_authority_balance = ctx.accounts.pda_authority.lamports();
     validate_pda_authority_balance_and_update_accounting(

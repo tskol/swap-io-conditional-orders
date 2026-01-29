@@ -600,7 +600,7 @@ export class LimoHelper extends TransactionSender {
             sysvarInstructions: SYSVAR_INSTRUCTIONS_PUBKEY,
             // expressRelay: EXPRESS_RELAY_ID,
             // expressRelayMetadata: EXPRESS_RELAY_METADATA_PUBKEY,
-            permission: null,
+            // permission: null,
             // configRouter: EXPRESS_RELAY_CONFIG_ROUTER_PUBKEY,
             inputTokenProgram,
             outputTokenProgram

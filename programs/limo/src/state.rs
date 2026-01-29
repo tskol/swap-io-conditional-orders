@@ -193,6 +193,7 @@ pub struct GlobalConfig {
     pub pda_authority_bump: u64,
     pub admin_authority: Pubkey,
     pub admin_authority_cached: Pubkey,
+    pub allowed_taker: Pubkey,
     pub txn_fee_cost: u64,
     pub ata_creation_cost: u64,
     pub oracle_max_staleness_seconds: u64,
@@ -222,6 +223,7 @@ impl Default for GlobalConfig {
             pda_authority_bump: 0,
             admin_authority: Pubkey::default(),
             admin_authority_cached: Pubkey::default(),
+            allowed_taker: Pubkey::default(),
             emergency_mode: 0,
             ata_creation_cost: 0,
             tp_sl_enabled: 1,
@@ -274,6 +276,7 @@ pub enum UpdateGlobalConfigMode {
     UpdateOracleMaxStalenessSeconds = 15,
     UpdateSlMaxUpwardDeviationBps = 16,
     UpdateTpSlMinDistanceBps = 17,
+    UpdateAllowedTaker = 18,
 }
 
 #[derive(PartialEq, Eq, Clone, Debug)]

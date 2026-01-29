@@ -465,12 +465,6 @@ export type Limo = {
           "isSigner": false
         },
         {
-          "name": "permission",
-          "isMut": false,
-          "isSigner": false,
-          "isOptional": true
-        },
-        {
           "name": "inputTokenProgram",
           "isMut": false,
           "isSigner": false
@@ -1157,6 +1151,10 @@ export type Limo = {
             "type": "publicKey"
           },
           {
+            "name": "allowedTaker",
+            "type": "publicKey"
+          },
+          {
             "name": "txnFeeCost",
             "type": "u64"
           },
@@ -1277,6 +1275,9 @@ export type Limo = {
           },
           {
             "name": "UpdateTpSlMinDistanceBps"
+          },
+          {
+            "name": "UpdateAllowedTaker"
           }
         ]
       }
@@ -2236,12 +2237,6 @@ export const IDL: Limo = {
           "isSigner": false
         },
         {
-          "name": "permission",
-          "isMut": false,
-          "isSigner": false,
-          "isOptional": true
-        },
-        {
           "name": "inputTokenProgram",
           "isMut": false,
           "isSigner": false
@@ -2928,6 +2923,10 @@ export const IDL: Limo = {
             "type": "publicKey"
           },
           {
+            "name": "allowedTaker",
+            "type": "publicKey"
+          },
+          {
             "name": "txnFeeCost",
             "type": "u64"
           },
@@ -3048,6 +3047,9 @@ export const IDL: Limo = {
           },
           {
             "name": "UpdateTpSlMinDistanceBps"
+          },
+          {
+            "name": "UpdateAllowedTaker"
           }
         ]
       }
