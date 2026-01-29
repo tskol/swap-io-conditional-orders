@@ -6,7 +6,7 @@ seeds = false
 skip-lint = false
 
 [programs.localnet]
-limo = "6b2ieZ8k2t6yxD6wS24Zq5tb9QqtivfvXUKKntdByDEk"
+limo = "BQvCNSSpC4Csn5Ldr7GmLvrXnjLjLJRsDhYNMpkgJskS"
 
 [registry]
 url = "https://api.apr.dev"

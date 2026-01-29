@@ -21,7 +21,7 @@ use utils::{
 use crate::handlers::*;
 pub use crate::state::*;
 
-declare_id!("6b2ieZ8k2t6yxD6wS24Zq5tb9QqtivfvXUKKntdByDEk");
+declare_id!("BQvCNSSpC4Csn5Ldr7GmLvrXnjLjLJRsDhYNMpkgJskS");
 
 #[cfg(not(feature = "no-entrypoint"))]
 solana_security_txt::security_txt! {
