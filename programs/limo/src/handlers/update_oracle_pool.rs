@@ -29,7 +29,7 @@ pub struct UpdateOraclePool<'info> {
 
     #[account(mut,
         has_one = global_config,
-        seeds = [seeds::ORACLE_POOL, token_mint.key().as_ref()],
+        seeds = [seeds::ORACLE_POOL, global_config.key().as_ref(), token_mint.key().as_ref()],
         bump
     )]
     pub oracle_pool: AccountLoader<'info, OraclePoolsState>,

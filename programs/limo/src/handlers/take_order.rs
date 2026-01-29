@@ -212,13 +212,13 @@ pub struct TakeOrder<'info> {
     pub output_fee_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
     #[account(mut,
-        seeds = [seeds::ORACLE_POOL, output_mint.key().as_ref()],
+        seeds = [seeds::ORACLE_POOL, global_config.key().as_ref(), output_mint.key().as_ref()],
         bump
     )]
     pub output_oracle_pool: Option<AccountLoader<'info, OraclePoolsState>>,
 
     #[account(mut,
-        seeds = [seeds::ORACLE_POOL, input_mint.key().as_ref()],
+        seeds = [seeds::ORACLE_POOL, global_config.key().as_ref(), input_mint.key().as_ref()],
         bump
     )]
     pub input_oracle_pool: Option<AccountLoader<'info, OraclePoolsState>>,

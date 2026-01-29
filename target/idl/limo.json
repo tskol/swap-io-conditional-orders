@@ -1766,8 +1766,5 @@
       "name": "OrderParametersInvalid",
       "msg": "The order parameters are invalid"
     }
-  ],
-  "metadata": {
-    "address": "6b2ieZ8k2t6yxD6wS24Zq5tb9QqtivfvXUKKntdByDEk"
-  }
+  ]
 }

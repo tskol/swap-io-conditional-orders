@@ -37,7 +37,7 @@ pub struct InitializeOraclePool<'info> {
     #[account(init,
         payer = admin_authority,
         space = 8 + 32 + 32 + 32, // 8 (AccountLoader header) + 32 (global_config) + 32 (oracle_feed_id) + 32 (token_mint)
-        seeds = [seeds::ORACLE_POOL, token_mint.key().as_ref()],
+        seeds = [seeds::ORACLE_POOL, global_config.key().as_ref(), token_mint.key().as_ref()],
         bump
     )]
     pub oracle_pool: AccountLoader<'info, OraclePoolsState>,

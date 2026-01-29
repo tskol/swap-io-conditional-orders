@@ -96,15 +96,17 @@ export class LimoHelper extends TransactionSender {
         return { feeVault, bump };
     }
 
-    async getOraclePool(mint: web3.PublicKey): Promise<{ oraclePool: web3.PublicKey, bump: number }> {
-        const [oraclePool, bump] = web3.PublicKey.findProgramAddressSync(
-          [
-            anchor.utils.bytes.utf8.encode(ORACLE_POOL_SEED),
-            mint.toBuffer(),
-          ],
-          this.program.programId
-        );
-        return { oraclePool, bump };
+    async getOraclePool(mint: web3.PublicKey, globalConfig?: web3.PublicKey): Promise<{ oraclePool: web3.PublicKey, bump: number }> {
+      const globalConfigPubkey = globalConfig ?? this.globalConfig;
+      const [oraclePool, bump] = web3.PublicKey.findProgramAddressSync(
+        [
+          anchor.utils.bytes.utf8.encode(ORACLE_POOL_SEED),
+          globalConfigPubkey.toBuffer(),
+          mint.toBuffer(),
+        ],
+        this.program.programId
+      );
+      return { oraclePool, bump };
     }
 
     getGlobalConfig(): web3.PublicKey {
