@@ -596,7 +596,7 @@ fn update_take_child_order_accounting_and_tips(
             expected_input_usd_price = expected_input_usd_price.checked_mul(10_u64.pow((output_decimals - input_decimals).try_into().unwrap())).unwrap();
         }
 
-        let sl_max_upward_deviation = (Fraction::from_bps(global_config.sl_max_upward_deviation_bps) * Fraction::from(expected_output_usd_price))
+        let sl_max_upward_deviation = (Fraction::from_bps(global_config.sl_max_upward_deviation_bps) * Fraction::from(expected_input_usd_price))
             .to_ceil::<u64>();
 
         if expected_input_usd_price > expected_output_usd_price.checked_add(sl_max_upward_deviation).unwrap() {

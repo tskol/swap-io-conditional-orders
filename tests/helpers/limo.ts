@@ -485,92 +485,104 @@ export class LimoHelper extends TransactionSender {
           outputTokenProgram,
         );
 
-        // if (orderAccount.orderType === OrderType.LimitSL) {
-          // const pyth = new PythSolanaReceiver({
-          //   connection: this.provider.connection,
-          //   wallet: args.taker,
-          // });
+        if (orderAccount.orderType === OrderType.LimitSL) {
+          const PythSolanaReceiver = (await import(
+            "@pythnetwork/pyth-solana-receiver"
+          )).PythSolanaReceiver;
+          const pyth = new PythSolanaReceiver({
+            connection: this.provider.connection,
+            wallet: args.taker,
+          });
 
-        //   const inputOraclePoolAccount = await this.getOraclePoolAccount(inputMint);
-        //   const outputOraclePoolAccount = await this.getOraclePoolAccount(outputMint);
+          const inputOraclePoolAccount = await this.getOraclePoolAccount(inputMint);
+          const outputOraclePoolAccount = await this.getOraclePoolAccount(outputMint);
 
-        //   const inputFeedId = (inputOraclePoolAccount.oracleFeedId.map((x) => x.toString(16))).toString();
-        //   const outputFeedId = (outputOraclePoolAccount.oracleFeedId.map((x) => x.toString(16))).toString();
+          const inputFeedId = "0x" + (inputOraclePoolAccount.oracleFeedId.map((x) => {
+            let hex = x.toString(16);
+            if (hex.length < 2) {
+              hex = "0" + hex;
+            }
+            return hex;
+          }).join(''));
+          const outputFeedId = "0x" + (outputOraclePoolAccount.oracleFeedId.map((x) => {
+            let hex = x.toString(16);
+            if (hex.length < 2) {
+              hex = "0" + hex;
+            }
+            return hex;
+          }).join(''));
 
-        //   console.log("inputFeedId", inputFeedId);
-        //   console.log("outputFeedId", outputFeedId);
+          const priceUpdateData = await this.pythConnection.getLatestVaas([inputFeedId, outputFeedId]);
+          const builder = pyth.newTransactionBuilder({ closeUpdateAccounts: true });
+          await builder.addPostPriceUpdates(priceUpdateData);
 
-        //   const priceUpdateData = await this.pythConnection.getLatestVaas([inputFeedId, outputFeedId]);
-        //   const builder = pyth.newTransactionBuilder({ closeUpdateAccounts: true });
-        //   await builder.addPostPriceUpdates(priceUpdateData);
-
-        //   await builder.addPriceConsumerInstructions(
-        //     async (
-        //       getPriceUpdateAccount: (priceFeedId: string) => web3.PublicKey,
-        //     ) => {
-        //       const inputPriceUpdate = getPriceUpdateAccount(inputFeedId);
-        //       const outputPriceUpdate = getPriceUpdateAccount(outputFeedId);
-        //       return [
-        //         {
-        //           instruction: await this.program.methods.takeOrder(
-        //             args.inputAmount,
-        //             args.minOutputAmount,
-        //             args.tipAmountPermissionlessTaking,
-        //           )
-        //           .accounts({
-        //             taker: args.taker.publicKey,
-        //             maker,
-        //             globalConfig,
-        //             pdaAuthority,
-        //             order: args.order,
-        //             parentOrder: parentOrder.toBase58() == web3.PublicKey.default.toBase58() ? null : parentOrder,
-        //             brotherOrder: brotherOrder ? brotherOrder : null,
-        //             inputMint,
-        //             outputMint,
-        //             inputVault,
-        //             outputVault,
-        //             outputFeeVault,
-        //             outputOraclePool,
-        //             inputOraclePool,
-        //             inputPriceUpdate: inputPriceUpdate,
-        //             outputPriceUpdate: outputPriceUpdate,
-        //             takerInputAta,
-        //             takerOutputAta,
-        //             intermediaryOutputTokenAccount: null,
-        //             makerOutputAta,
-        //             sysvarInstructions: SYSVAR_INSTRUCTIONS_PUBKEY,
-        //             // expressRelay: EXPRESS_RELAY_ID,
-        //             // expressRelayMetadata: EXPRESS_RELAY_METADATA_PUBKEY,
-        //             permission: null,
-        //             // configRouter: EXPRESS_RELAY_CONFIG_ROUTER_PUBKEY,
-        //             inputTokenProgram,
-        //             outputTokenProgram
-        //           })
-        //           .instruction(),
-        //           signers: [],
-        //         },
-        //       ];
-        //     },
-        //   );
+          await builder.addPriceConsumerInstructions(
+            async (
+              getPriceUpdateAccount: (priceFeedId: string) => web3.PublicKey,
+            ) => {
+              const inputPriceUpdate = getPriceUpdateAccount(inputFeedId);
+              const outputPriceUpdate = getPriceUpdateAccount(outputFeedId);
+              return [
+                {
+                  instruction: await this.program.methods.takeOrder(
+                    args.inputAmount,
+                    args.minOutputAmount,
+                    args.tipAmountPermissionlessTaking,
+                  )
+                  .accounts({
+                    taker: args.taker.publicKey,
+                    maker,
+                    globalConfig,
+                    pdaAuthority,
+                    order: args.order,
+                    parentOrder: parentOrder.toBase58() == web3.PublicKey.default.toBase58() ? null : parentOrder,
+                    brotherOrder: brotherOrder ? brotherOrder : null,
+                    inputMint,
+                    outputMint,
+                    inputVault,
+                    outputVault,
+                    outputFeeVault,
+                    outputOraclePool,
+                    inputOraclePool,
+                    inputPriceUpdate: inputPriceUpdate,
+                    outputPriceUpdate: outputPriceUpdate,
+                    takerInputAta,
+                    takerOutputAta,
+                    intermediaryOutputTokenAccount: null,
+                    makerOutputAta,
+                    sysvarInstructions: SYSVAR_INSTRUCTIONS_PUBKEY,
+                    // expressRelay: EXPRESS_RELAY_ID,
+                    // expressRelayMetadata: EXPRESS_RELAY_METADATA_PUBKEY,
+                    // permission: null,
+                    // configRouter: EXPRESS_RELAY_CONFIG_ROUTER_PUBKEY,
+                    inputTokenProgram,
+                    outputTokenProgram
+                  })
+                  .instruction(),
+                  signers: [],
+                },
+              ];
+            },
+          );
       
-        //   const txs = await builder.buildVersionedTransactions({});
+          const txs = await builder.buildVersionedTransactions({});
 
-        //   const signatures = [];
-        //   for (const tx of txs) {
-        //     tx.tx.sign(tx.signers);
-        //   }
+          const signatures = [];
+          for (const tx of txs) {
+            tx.tx.sign(tx.signers);
+          }
 
-        //   const signedTxs = await args.taker.signAllTransactions(txs.map((t) => t.tx));
+          const signedTxs = await args.taker.signAllTransactions(txs.map((t) => t.tx));
 
-        //   for (const signedTx of signedTxs) {
-        //     const signature = await this.connection.sendTransaction(signedTx);
-        //     const blockhash = await this.connection.getLatestBlockhash();
-        //     await this.connection.confirmTransaction({ signature, ...blockhash });
-        //     signatures.push(signature);
-        //   }
+          for (const signedTx of signedTxs) {
+            const signature = await this.connection.sendTransaction(signedTx);
+            const blockhash = await this.connection.getLatestBlockhash();
+            await this.connection.confirmTransaction({ signature, ...blockhash });
+            signatures.push(signature);
+          }
 
-        //   return { signatures: [] };
-        // } else {
+          return { signatures };
+        } else {
           const ix = await this.program.methods.takeOrder(
             args.inputAmount,
             args.minOutputAmount,
@@ -610,7 +622,7 @@ export class LimoHelper extends TransactionSender {
           const { signature } = await this.sendTransaction(args.taker, [ix]);
           return { signatures: [signature] };
         }
-      // }
+      }
 
       async closeOrder(args: {
         maker: Wallet;
