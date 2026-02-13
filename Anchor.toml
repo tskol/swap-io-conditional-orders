@@ -6,7 +6,7 @@ seeds = false
 skip-lint = false
 
 [programs.localnet]
-limo = "BQvCNSSpC4Csn5Ldr7GmLvrXnjLjLJRsDhYNMpkgJskS"
+limo = "82qR3ftARSeXPBg9wnVrsLsAepfvimBUCPdNuiV9unhV"
 
 [registry]
 url = "https://api.apr.dev"
@@ -16,10 +16,10 @@ cluster = "Localnet"
 wallet = "./.private/deployer.json"
 
 [scripts]
-test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/*.ts"
-initializeGlobalConfig = "yarn run ts-node ./scripts/initializeGlobalConfig.ts"
-InitializeVault = "yarn run ts-node ./scripts/InitializeVault.ts"
-InitializeOraclePool = "yarn run ts-node ./scripts/InitializeOraclePool.ts"
-CreateOrder = "yarn run ts-node ./scripts/CreateOrder.ts"
-TakeOrder = "yarn run ts-node ./scripts/TakeOrder.ts"
 CloseOrder = "yarn run ts-node ./scripts/CloseOrder.ts"
+CreateOrder = "yarn run ts-node ./scripts/CreateOrder.ts"
+InitializeOraclePool = "yarn run ts-node ./scripts/InitializeOraclePool.ts"
+InitializeVault = "yarn run ts-node ./scripts/InitializeVault.ts"
+TakeOrder = "yarn run ts-node ./scripts/TakeOrder.ts"
+initializeGlobalConfig = "yarn run ts-node ./scripts/initializeGlobalConfig.ts"
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/*.ts"

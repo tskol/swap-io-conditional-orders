@@ -1,4 +1,4 @@
-export const PROGRAM_ID = "BQvCNSSpC4Csn5Ldr7GmLvrXnjLjLJRsDhYNMpkgJskS";
+export const PROGRAM_ID = "82qR3ftARSeXPBg9wnVrsLsAepfvimBUCPdNuiV9unhV";
 export const PYTH_ENDPOINT = "https://hermes.pyth.network";
 
 export const GLOBAL_CONFIG_SIZE = 2224;
