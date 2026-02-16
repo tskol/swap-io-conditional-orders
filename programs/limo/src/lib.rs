@@ -25,13 +25,13 @@ declare_id!("82qR3ftARSeXPBg9wnVrsLsAepfvimBUCPdNuiV9unhV");
 
 #[cfg(not(feature = "no-entrypoint"))]
 solana_security_txt::security_txt! {
-    name: "Kamino Liquidity Integration & Matching Orders (LIMO)",
-    project_url: "https://swap.kamino.finance/",
-    contacts: "email:security@kamino.finance",
-    policy: "https://github.com/Kamino-Finance/audits/blob/master/docs/SECURITY.md",
-
-       preferred_languages: "en",
-    auditors: "OtterSec, Offside Labs, Sec3"
+    name: "swap-io-limit-orders-v1",
+    project_url: "https://swap.io",
+    contacts: "https://swap.io/contact",
+    policy: "https://github.com/swap-dot-io/swap-io-limit-orders-v1/SECURITY.md",
+    
+    source_code: "https://github.com/swap-dot-io/swap-io-limit-orders-v1",
+    preferred_languages: "en"
 }
 
 #[program]
