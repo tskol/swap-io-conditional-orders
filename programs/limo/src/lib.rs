@@ -27,7 +27,7 @@ declare_id!("82qR3ftARSeXPBg9wnVrsLsAepfvimBUCPdNuiV9unhV");
 solana_security_txt::security_txt! {
     name: "swap-io-limit-orders-v1",
     project_url: "https://swap.io",
-    contacts: "https://swap.io/contact",
+    contacts: "link:https://swap.io/contact",
     policy: "https://github.com/swap-dot-io/swap-io-limit-orders-v1/SECURITY.md",
     
     source_code: "https://github.com/swap-dot-io/swap-io-limit-orders-v1",
