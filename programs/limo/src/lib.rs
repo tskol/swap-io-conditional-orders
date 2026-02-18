@@ -13,6 +13,7 @@ use thiserror::Error;
 use utils::{
     constraints::{
         create_new_orders_disabled, emergency_mode_disabled,// flash_taking_orders_disabled,
+        order_expired,
         taking_orders_disabled,
     },
     consts::UPDATE_GLOBAL_CONFIG_BYTE_SIZE,
@@ -61,11 +62,21 @@ pub mod limo {
         order_type: u8,
         tp_output_amount: u64,
         sl_output_amount: u64,
+        active_duration_seconds: u64,
     ) -> Result<()> {
-        handlers::create_order::handler_create_order(ctx, input_amount, output_amount, order_type, tp_output_amount, sl_output_amount)
+        handlers::create_order::handler_create_order(
+            ctx,
+            input_amount,
+            output_amount,
+            order_type,
+            tp_output_amount,
+            sl_output_amount,
+            active_duration_seconds,
+        )
     }
 
     #[access_control(emergency_mode_disabled(&ctx.accounts.global_config))]
+    #[access_control(order_expired(&ctx.accounts.order))]
     pub fn update_order(
         ctx: Context<UpdateOrder>,
         mode: UpdateOrderMode,
@@ -81,6 +92,7 @@ pub mod limo {
 
     #[access_control(taking_orders_disabled(&ctx.accounts.global_config))]
     #[access_control(emergency_mode_disabled(&ctx.accounts.global_config))]
+    #[access_control(order_expired(&ctx.accounts.order))]
     pub fn take_order(
         ctx: Context<TakeOrder>,
         input_amount: u64,
@@ -377,6 +389,9 @@ pub enum LimoError {
 
     #[msg("The order parameters are invalid")]
     OrderParametersInvalid,
+
+    #[msg("Order expired")]
+    OrderExpired,
 }
 
 impl From<TryFromIntError> for LimoError {

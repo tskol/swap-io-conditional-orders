@@ -18,6 +18,7 @@ pub fn handler_create_order(
     order_type: u8,
     tp_output_amount: u64,
     sl_output_amount: u64,
+    active_duration_seconds: u64,
 ) -> Result<()> {
     validate_token_extensions(
         &ctx.accounts.input_mint.to_account_info(),
@@ -69,6 +70,7 @@ pub fn handler_create_order(
         order_type,
         ctx.bumps.input_vault,
         clock.unix_timestamp,
+        active_duration_seconds,
     )?;
 
     if parsed_order_type == OrderType::LimitParent {
@@ -91,6 +93,7 @@ pub fn handler_create_order(
                 OrderType::LimitTP as u8,
                 ctx.bumps.output_vault,
                 clock.unix_timestamp,
+                active_duration_seconds,
             )?;
             order.tp_child_order = tp_order_account.key();
         }
@@ -111,6 +114,7 @@ pub fn handler_create_order(
                 OrderType::LimitSL as u8,
                 ctx.bumps.output_vault,
                 clock.unix_timestamp,
+                active_duration_seconds,
             )?;
             order.sl_child_order = sl_order_account.key();
         }

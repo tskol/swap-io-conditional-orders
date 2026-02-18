@@ -25,6 +25,13 @@ pub fn handler_close_order_and_claim_tip(ctx: Context<CloseOrderAndClaimTip>) ->
 
     let ts = u64::try_from(Clock::get()?.unix_timestamp).unwrap();
 
+    validate_closer(
+        ctx.accounts.closer.key(),
+        ctx.accounts.maker.key(),
+        global_config.allowed_taker,
+        order.expiry_timestamp < ts,
+    )?;
+
     if parsed_order_type == OrderType::LimitParent {
         if order.tp_child_order != Pubkey::default() {
             let tp_child_order_loader = ctx
@@ -160,7 +167,11 @@ pub fn handler_close_order_and_claim_tip(ctx: Context<CloseOrderAndClaimTip>) ->
 #[derive(Accounts)]
 pub struct CloseOrderAndClaimTip<'info> {
     #[account(mut)]
-    pub maker: Signer<'info>,
+    pub closer: Signer<'info>,
+
+    #[account(mut)]
+    /// CHECK: maker is a valid account
+    pub maker: AccountInfo<'info>,
 
     #[account(mut,
         has_one = maker,
@@ -261,5 +272,15 @@ fn close_order_and_claim_tip<'a>(
         )?;
     }
 
+    Ok(())
+}
+
+fn validate_closer(
+    closer: Pubkey,
+    maker: Pubkey,
+    allowed_taker: Pubkey,
+    is_order_expired: bool,
+) -> Result<()> {
+    require!(is_order_expired && closer == allowed_taker || closer == maker, LimoError::InvalidAccount);
     Ok(())
 }

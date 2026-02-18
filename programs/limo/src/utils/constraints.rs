@@ -7,7 +7,7 @@ use anchor_spl::{
 };
 use express_relay::{cpi::accounts::CheckPermission, sdk::cpi::check_permission_cpi};
 
-use crate::{GlobalConfig, LimoError};
+use crate::{GlobalConfig, Order, LimoError};
 
 pub fn emergency_mode_disabled(global_config: &AccountLoader<GlobalConfig>) -> Result<()> {
     if global_config.load()?.emergency_mode > 0 {
@@ -35,6 +35,14 @@ pub fn taking_orders_disabled(global_config: &AccountLoader<GlobalConfig>) -> Re
         return err!(LimoError::OrderTakingBlocked);
     }
     Ok(())
+}
+
+pub fn order_expired(order: &AccountLoader<Order>) -> Result<()> {
+    let timestamp: u64 = Clock::get()?.unix_timestamp.try_into().expect("Negative timestamp");
+    if order.load()?.expiry_timestamp < timestamp {
+        return err!(LimoError::OrderExpired);
+    }
+    Ok(())   
 }
 
 pub fn check_permission_express_relay_and_get_fees<'a>(

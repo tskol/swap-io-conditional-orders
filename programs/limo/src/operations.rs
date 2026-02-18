@@ -79,7 +79,9 @@ pub fn create_order(
     order_type: u8,
     in_vault_bump: u8,
     current_timestamp: i64,
+    active_duration_seconds: u64,
 ) -> Result<()> {
+    let timestamp = current_timestamp.try_into().expect("Negative timestamp");
     order.global_config = global_config;
     order.initial_input_amount = input_amount;
     order.remaining_input_amount = input_amount;
@@ -98,10 +100,10 @@ pub fn create_order(
     order.status = OrderStatus::Active as u8;
     order.order_type = order_type;
     order.in_vault_bump = in_vault_bump;
-    order.last_updated_timestamp = current_timestamp.try_into().expect("Negative timestamp");
+    order.last_updated_timestamp = timestamp;
     order.counterparty = Pubkey::default();
     order.permissionless = 0;
-
+    order.expiry_timestamp = timestamp + active_duration_seconds;
     Ok(())
 }
 

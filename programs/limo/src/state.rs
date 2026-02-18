@@ -103,7 +103,9 @@ pub struct Order {
 
     pub counterparty: Pubkey,
 
-    pub padding: [u64; 15],
+    pub expiry_timestamp: u64,
+
+    pub padding: [u64; 14],
 }
 
 #[event]

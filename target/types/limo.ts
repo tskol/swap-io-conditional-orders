@@ -217,6 +217,10 @@ export type Limo = {
         {
           "name": "slOutputAmount",
           "type": "u64"
+        },
+        {
+          "name": "activeDurationSeconds",
+          "type": "u64"
         }
       ]
     },
@@ -256,9 +260,14 @@ export type Limo = {
       "name": "closeOrderAndClaimTip",
       "accounts": [
         {
-          "name": "maker",
+          "name": "closer",
           "isMut": true,
           "isSigner": true
+        },
+        {
+          "name": "maker",
+          "isMut": true,
+          "isSigner": false
         },
         {
           "name": "order",
@@ -978,11 +987,15 @@ export type Limo = {
             "type": "publicKey"
           },
           {
+            "name": "expiryTimestamp",
+            "type": "u64"
+          },
+          {
             "name": "padding",
             "type": {
               "array": [
                 "u64",
-                15
+                14
               ]
             }
           }
@@ -1766,6 +1779,11 @@ export type Limo = {
       "code": 6059,
       "name": "OrderParametersInvalid",
       "msg": "The order parameters are invalid"
+    },
+    {
+      "code": 6060,
+      "name": "OrderExpired",
+      "msg": "Order expired"
     }
   ]
 };
@@ -1989,6 +2007,10 @@ export const IDL: Limo = {
         {
           "name": "slOutputAmount",
           "type": "u64"
+        },
+        {
+          "name": "activeDurationSeconds",
+          "type": "u64"
         }
       ]
     },
@@ -2028,9 +2050,14 @@ export const IDL: Limo = {
       "name": "closeOrderAndClaimTip",
       "accounts": [
         {
-          "name": "maker",
+          "name": "closer",
           "isMut": true,
           "isSigner": true
+        },
+        {
+          "name": "maker",
+          "isMut": true,
+          "isSigner": false
         },
         {
           "name": "order",
@@ -2750,11 +2777,15 @@ export const IDL: Limo = {
             "type": "publicKey"
           },
           {
+            "name": "expiryTimestamp",
+            "type": "u64"
+          },
+          {
             "name": "padding",
             "type": {
               "array": [
                 "u64",
-                15
+                14
               ]
             }
           }
@@ -3538,6 +3569,11 @@ export const IDL: Limo = {
       "code": 6059,
       "name": "OrderParametersInvalid",
       "msg": "The order parameters are invalid"
+    },
+    {
+      "code": 6060,
+      "name": "OrderExpired",
+      "msg": "Order expired"
     }
   ]
 };

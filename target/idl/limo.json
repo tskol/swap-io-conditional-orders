@@ -217,6 +217,10 @@
         {
           "name": "slOutputAmount",
           "type": "u64"
+        },
+        {
+          "name": "activeDurationSeconds",
+          "type": "u64"
         }
       ]
     },
@@ -256,9 +260,14 @@
       "name": "closeOrderAndClaimTip",
       "accounts": [
         {
-          "name": "maker",
+          "name": "closer",
           "isMut": true,
           "isSigner": true
+        },
+        {
+          "name": "maker",
+          "isMut": true,
+          "isSigner": false
         },
         {
           "name": "order",
@@ -978,11 +987,15 @@
             "type": "publicKey"
           },
           {
+            "name": "expiryTimestamp",
+            "type": "u64"
+          },
+          {
             "name": "padding",
             "type": {
               "array": [
                 "u64",
-                15
+                14
               ]
             }
           }
@@ -1766,9 +1779,11 @@
       "code": 6059,
       "name": "OrderParametersInvalid",
       "msg": "The order parameters are invalid"
+    },
+    {
+      "code": 6060,
+      "name": "OrderExpired",
+      "msg": "Order expired"
     }
-  ],
-  "metadata": {
-    "address": "BQvCNSSpC4Csn5Ldr7GmLvrXnjLjLJRsDhYNMpkgJskS"
-  }
+  ]
 }
