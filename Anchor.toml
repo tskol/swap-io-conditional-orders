@@ -6,14 +6,14 @@ seeds = false
 skip-lint = false
 
 [programs.localnet]
-limo = "82qR3ftARSeXPBg9wnVrsLsAepfvimBUCPdNuiV9unhV"
+limo = "BQvCNSSpC4Csn5Ldr7GmLvrXnjLjLJRsDhYNMpkgJskS"
 
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
 cluster = "Localnet"
-wallet = "./.private/deployer.json"
+wallet = "~/.config/solana/id.json"
 
 [scripts]
 CloseOrder = "yarn run ts-node ./scripts/CloseOrder.ts"
