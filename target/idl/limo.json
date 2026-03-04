@@ -1114,13 +1114,8 @@
             "type": "u16"
           },
           {
-            "name": "padding0",
-            "type": {
-              "array": [
-                "u8",
-                2
-              ]
-            }
+            "name": "keeperFeeBps",
+            "type": "u16"
           },
           {
             "name": "orderCloseDelaySeconds",
@@ -1291,6 +1286,9 @@
           },
           {
             "name": "UpdateAllowedTaker"
+          },
+          {
+            "name": "UpdateKeeperFeeBps"
           }
         ]
       }

@@ -288,16 +288,22 @@ pub fn take_order_calcs(
 
     let mut output_to_send_to_protocol = 0;
     let mut output_keeper_fee = 0;
-    if fee_pot > 0 {
-        if order.order_type == OrderType::LimitParent as u8 {
-            output_to_send_to_protocol = (Fraction::from_bps(global_config.parent_fill_fee_protocol_bps) * Fraction::from(fee_pot))
-                .to_ceil::<u64>();
-            output_keeper_fee = (Fraction::from_bps(global_config.parent_fill_fee_keeper_bps) * Fraction::from(fee_pot))
-                .to_ceil::<u64>();
-        } else if order.order_type == OrderType::LimitTP as u8 || order.order_type == OrderType::LimitSL as u8 {
+    let mut output_fee_pot_keeper_fee = 0;
+    if order.order_type == OrderType::Vanilla as u8 {
+        output_keeper_fee = (Fraction::from_bps(global_config.keeper_fee_bps) * Fraction::from(output_amount))
+            .to_ceil::<u64>();
+    } else if order.order_type == OrderType::LimitParent as u8 && fee_pot > 0 {
+        output_to_send_to_protocol = (Fraction::from_bps(global_config.parent_fill_fee_protocol_bps) * Fraction::from(fee_pot))
+            .to_ceil::<u64>();
+        output_fee_pot_keeper_fee = (Fraction::from_bps(global_config.parent_fill_fee_keeper_bps) * Fraction::from(fee_pot))
+            .to_ceil::<u64>();
+    } else if order.order_type == OrderType::LimitTP as u8 || order.order_type == OrderType::LimitSL as u8 {
+        output_keeper_fee = (Fraction::from_bps(global_config.keeper_fee_bps) * Fraction::from(output_amount))
+            .to_ceil::<u64>();
+        if fee_pot > 0 {
             output_to_send_to_protocol = (Fraction::from_bps(global_config.tp_sl_child_fee_protocol_bps) * Fraction::from(fee_pot))
                 .to_ceil::<u64>();
-            output_keeper_fee = (Fraction::from_bps(global_config.tp_sl_child_fee_keeper_bps) * Fraction::from(fee_pot))
+            output_fee_pot_keeper_fee += (Fraction::from_bps(global_config.tp_sl_child_fee_keeper_bps) * Fraction::from(fee_pot))
                 .to_ceil::<u64>();
         }
     }
@@ -306,7 +312,7 @@ pub fn take_order_calcs(
         .checked_sub(output_to_send_to_protocol)
         .ok_or(LimoError::MathOverflow)
         .unwrap()
-        .checked_sub(output_keeper_fee)
+        .checked_sub(output_fee_pot_keeper_fee)
         .ok_or(LimoError::MathOverflow)
         .unwrap();
 
@@ -319,13 +325,18 @@ pub fn take_order_calcs(
         return err!(LimoError::OrderOutputAmountInvalid);
     }
 
+    let output_to_send_to_maker_with_keeper_fee = output_to_send_to_maker
+        .checked_sub(output_keeper_fee)
+        .ok_or(LimoError::MathOverflow)
+        .unwrap();
+
     msg!("input_to_send_to_taker: {}", input_to_send_to_taker);
     msg!("output_to_send_to_maker: {}", output_to_send_to_maker);
     msg!("output_to_send_to_protocol: {}", output_to_send_to_protocol);
 
     Ok(TakeOrderEffects {
         input_to_send_to_taker,
-        output_to_send_to_maker,
+        output_to_send_to_maker: output_to_send_to_maker_with_keeper_fee,
         output_to_send_to_protocol,
     })
 }
@@ -418,7 +429,8 @@ pub fn update_global_config(
         | UpdateGlobalConfigMode::UpdateParentFillFeeKeeperBps
         | UpdateGlobalConfigMode::UpdateParentFillFeeProtocolBps
         | UpdateGlobalConfigMode::UpdateTpSlChildFeeKeeperBps
-        | UpdateGlobalConfigMode::UpdateTpSlChildFeeProtocolBps => {
+        | UpdateGlobalConfigMode::UpdateTpSlChildFeeProtocolBps
+        | UpdateGlobalConfigMode::UpdateKeeperFeeBps => {
             let value = u16::from_le_bytes(value[0..2].try_into().unwrap());
             update_global_config_bps(global_config, mode, value, ts)?;
         }
@@ -725,6 +737,10 @@ fn update_global_config_bps(
         UpdateGlobalConfigMode::UpdateTpSlChildFeeProtocolBps => {
             msg!("new={} prev={}", value, global_config.tp_sl_child_fee_protocol_bps);
             global_config.tp_sl_child_fee_protocol_bps = value;
+        }
+        UpdateGlobalConfigMode::UpdateKeeperFeeBps => {
+            msg!("new={} prev={}", value, global_config.keeper_fee_bps);
+            global_config.keeper_fee_bps = value;
         }
         _ => return Err(LimoError::InvalidConfigOption.into()),
     }

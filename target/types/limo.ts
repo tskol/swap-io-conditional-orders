@@ -1114,13 +1114,8 @@ export type Limo = {
             "type": "u16"
           },
           {
-            "name": "padding0",
-            "type": {
-              "array": [
-                "u8",
-                2
-              ]
-            }
+            "name": "keeperFeeBps",
+            "type": "u16"
           },
           {
             "name": "orderCloseDelaySeconds",
@@ -1291,6 +1286,9 @@ export type Limo = {
           },
           {
             "name": "UpdateAllowedTaker"
+          },
+          {
+            "name": "UpdateKeeperFeeBps"
           }
         ]
       }
@@ -2904,13 +2902,8 @@ export const IDL: Limo = {
             "type": "u16"
           },
           {
-            "name": "padding0",
-            "type": {
-              "array": [
-                "u8",
-                2
-              ]
-            }
+            "name": "keeperFeeBps",
+            "type": "u16"
           },
           {
             "name": "orderCloseDelaySeconds",
@@ -3081,6 +3074,9 @@ export const IDL: Limo = {
           },
           {
             "name": "UpdateAllowedTaker"
+          },
+          {
+            "name": "UpdateKeeperFeeBps"
           }
         ]
       }
