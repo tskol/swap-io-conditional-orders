@@ -178,21 +178,21 @@ pub struct CloseOrderAndClaimTip<'info> {
         has_one = global_config,
         has_one = input_mint,
         has_one = output_mint,
-        close = maker
+        close = closer
     )]
     pub order: AccountLoader<'info, Order>,
 
     #[account(mut,
         has_one = maker,
         has_one = global_config,
-        close = maker,
+        close = closer,
     )]
     pub tp_child_order: Option<AccountLoader<'info, Order>>,
     
     #[account(mut,
         has_one = maker,
         has_one = global_config,
-        close = maker,
+        close = closer,
     )]
     pub sl_child_order: Option<AccountLoader<'info, Order>>,
 
