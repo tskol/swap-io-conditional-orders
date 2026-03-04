@@ -24,12 +24,14 @@ pub fn handler_close_order_and_claim_tip(ctx: Context<CloseOrderAndClaimTip>) ->
     require!(parsed_order_type == OrderType::LimitParent || parsed_order_type == OrderType::Vanilla, LimoError::OrderTypeInvalid);
 
     let ts = u64::try_from(Clock::get()?.unix_timestamp).unwrap();
+    // 0 means "no expiry" (backward compatibility: old orders had padding here)
+    let is_order_expired = order.expiry_timestamp != 0 && order.expiry_timestamp < ts;
 
     validate_closer(
         ctx.accounts.closer.key(),
         ctx.accounts.maker.key(),
         global_config.allowed_taker,
-        order.expiry_timestamp < ts,
+        is_order_expired,
     )?;
 
     if parsed_order_type == OrderType::LimitParent {

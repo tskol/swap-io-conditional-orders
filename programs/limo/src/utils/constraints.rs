@@ -38,11 +38,16 @@ pub fn taking_orders_disabled(global_config: &AccountLoader<GlobalConfig>) -> Re
 }
 
 pub fn order_expired(order: &AccountLoader<Order>) -> Result<()> {
+    let expiry = order.load()?.expiry_timestamp;
+    // 0 means "no expiry" (backward compatibility: old orders had padding here)
+    if expiry == 0 {
+        return Ok(());
+    }
     let timestamp: u64 = Clock::get()?.unix_timestamp.try_into().expect("Negative timestamp");
-    if order.load()?.expiry_timestamp < timestamp {
+    if expiry < timestamp {
         return err!(LimoError::OrderExpired);
     }
-    Ok(())   
+    Ok(())
 }
 
 pub fn check_permission_express_relay_and_get_fees<'a>(

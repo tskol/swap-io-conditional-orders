@@ -103,7 +103,7 @@ pub fn create_order(
     order.last_updated_timestamp = timestamp;
     order.counterparty = Pubkey::default();
     order.permissionless = 0;
-    order.expiry_timestamp = timestamp + active_duration_seconds;
+    order.expiry_timestamp = if active_duration_seconds == 0 { 0 } else { timestamp + active_duration_seconds };
     Ok(())
 }
 
