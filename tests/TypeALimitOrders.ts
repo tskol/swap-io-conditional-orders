@@ -221,6 +221,7 @@ describe("Type A Limit Orders", () => {
         let order: web3.PublicKey;
         const orderInputAmount = new BN(100000000000);
         const orderOutputAmount = new BN(200000000000);
+        const activeDurationSeconds = new BN(10);
 
         async function calcMinOutputAmount(inputAmount: BN, order: web3.PublicKey): Promise<BN> {
             const orderAccount = await limoHelper.getOrderAccount(order);
@@ -253,6 +254,7 @@ describe("Type A Limit Orders", () => {
                 inputAmount: orderInputAmount,
                 outputAmount: orderOutputAmount,
                 orderType: OrderType.Vanilla,
+                activeDurationSeconds: activeDurationSeconds,
             });
             order = orderPubkey;
 
@@ -504,6 +506,25 @@ describe("Type A Limit Orders", () => {
             expect(takerOutputAtaBalanceAfter.value.amount).to.equal(expectedTakerOutputAtaBalanceAfter);
             const expectedInputVaultAtaBalanceAfter = new BN(inputVaultAtaBalanceBefore.value.amount).sub(fillInputAmount).toString();
             expect(inputVaultAtaBalanceAfter.value.amount).to.equal(expectedInputVaultAtaBalanceAfter);
+        });
+
+        it("Should reject fill order when order is expired", async () => {
+            await limoHelper.updateGlobalConfig({
+                payer: payerWallet,
+                mode: UpdateGlobalConfigMode.UpdateAllowedTaker,
+                value: Array.from(taker.publicKey.toBuffer()),
+            });
+
+            const waitMs = (activeDurationSeconds.toNumber() + 1) * 1000;
+            await new Promise(resolve => setTimeout(resolve, waitMs));
+
+            await expectRejects(limoHelper.takeOrder({
+                taker: takerWallet,
+                order: order,
+                inputAmount: orderInputAmount,
+                minOutputAmount: orderOutputAmount,
+                tipAmountPermissionlessTaking: new BN(0),
+            }), LimoError.OrderExpired);
         });
     });
 

@@ -113,4 +113,5 @@ export const LimoError = {
     SwapInputInvalidBalanceChange: "The swap input balance change is positive, expected negative",
     SwapOutputInvalidBalanceChange: "The swap output balance change is negative, expected positive",
     OrderParametersInvalid: "The order parameters are invalid",
+    OrderExpired: "Order expired",
 }

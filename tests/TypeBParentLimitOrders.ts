@@ -18,29 +18,6 @@ import { OrderStatus, OrderType, LimoError, UpdateGlobalConfigMode, UpdateOrderM
 export const STABLE_PRICE_FEED =
   "0x8b1e8e689fbb95ece35155a8b42cb9f1b14208a2f6507866a9a90e8dc955289a";
 
-const USDC_MINT = new web3.PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
-
-export async function initializeLimo(
-  provider: anchor.AnchorProvider,
-  payer: web3.Keypair,
-) {
-  const mainAccounts = generateRandomLimoAccounts();
-  const payerWallet = new anchor.Wallet(payer);
-
-  const limoHelper = new LimoHelper(provider);
-  
-  await limoHelper.initializeGlobalConfig({
-    payer: payerWallet,
-  });
-
-//   await airdrop(mainAccounts.publicKeys.admin);
-
-  return {
-    limoHelper,
-    mainAccounts,
-  };
-}
-
 describe("Type B Parent Limit Orders", () => {
     const commitment: web3.Commitment = "confirmed";
     const envProvider = anchor.AnchorProvider.env();
@@ -274,6 +251,7 @@ describe("Type B Parent Limit Orders", () => {
         const orderOutputAmount = new BN(200000000000);
         const tpOutputAmount = new BN(120000000000);
         const slOutputAmount = new BN(80000000000);
+        const activeDurationSeconds = new BN(10);
 
         async function calcMinOutputAmount(inputAmount: BN, order: web3.PublicKey): Promise<BN> {
             const orderAccount = await limoHelper.getOrderAccount(order);
@@ -308,6 +286,7 @@ describe("Type B Parent Limit Orders", () => {
                 orderType: OrderType.LimitParent,
                 tpOutputAmount: tpOutputAmount,
                 slOutputAmount: slOutputAmount,
+                activeDurationSeconds: activeDurationSeconds,
             });
             order = orderPubkey;
 
@@ -399,6 +378,28 @@ describe("Type B Parent Limit Orders", () => {
         // Surplus token now sent to availableChildInputAmount. When parent and one of children are filled, the other child set to filled.
         // Surplus input and output tokens withdrawn on order close.
         it.skip("Surplus output bypasses child inventory", async () => {});
+
+        it("Should reject fill order when order is expired", async () => {
+            await limoHelper.updateGlobalConfig({
+                payer: payerWallet,
+                mode: UpdateGlobalConfigMode.UpdateAllowedTaker,
+                value: Array.from(taker.publicKey.toBuffer()),
+            });
+            
+            const waitMs = (activeDurationSeconds.toNumber() + 1) * 1000;
+            await new Promise(resolve => setTimeout(resolve, waitMs));
+
+            const fillInputAmount = orderInputAmount;
+            const fillMinOutputAmount = await calcMinOutputAmount(fillInputAmount, order);
+
+            await expectRejects(limoHelper.takeOrder({
+                taker: takerWallet,
+                order: order,
+                inputAmount: fillInputAmount,
+                minOutputAmount: fillMinOutputAmount,
+                tipAmountPermissionlessTaking: new BN(0),
+            }), LimoError.OrderExpired);
+        });
     });
 
     describe("Enforce parent/child inventory accounting", () => {
