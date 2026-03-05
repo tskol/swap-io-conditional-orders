@@ -166,6 +166,7 @@ describe("Safe cancellation and full unwind", () => {
         let order: web3.PublicKey;
         const orderInputAmount = new BN(100000000000);
         const orderOutputAmount = new BN(200000000000);
+        const activeDurationSeconds = new BN(10);
 
         beforeEach(async () => {
             const { signature, order: orderPubkey } = await limoHelper.createOrder({
@@ -175,21 +176,15 @@ describe("Safe cancellation and full unwind", () => {
                 inputAmount: orderInputAmount,
                 outputAmount: orderOutputAmount,
                 orderType: OrderType.Vanilla,
+                activeDurationSeconds: activeDurationSeconds,
             });
 
             order = orderPubkey;
 
-            await limoHelper.updateOrder({
-                maker: makerWallet,
-                order: order,
-                mode: UpdateOrderMode.UpdatePermissionless,
-                value: new BN(1).toBuffer(),
-            });
-            await limoHelper.updateOrder({
-                maker: makerWallet,
-                order: order,
-                mode: UpdateOrderMode.UpdateCounterparty,
-                value: taker.publicKey.toBuffer(),
+            await limoHelper.updateGlobalConfig({
+                payer: payerWallet,
+                mode: UpdateGlobalConfigMode.UpdateAllowedTaker,
+                value: Array.from(taker.publicKey.toBuffer()),
             });
         });
 
@@ -211,7 +206,7 @@ describe("Safe cancellation and full unwind", () => {
             const outputVaultAtaBalanceBefore = await provider.connection.getTokenAccountBalance(outputVaultAta);
 
             const { signature } = await limoHelper.closeOrder({
-                maker: makerWallet,
+                closer: makerWallet,
                 order: order,
             });
 
@@ -240,7 +235,7 @@ describe("Safe cancellation and full unwind", () => {
             });
 
             await expectRejects(limoHelper.closeOrder({
-                maker: makerWallet,
+                closer: makerWallet,
                 order: order,
             }), LimoError.NotEnoughTimePassedSinceLastUpdate);
 
@@ -253,6 +248,39 @@ describe("Safe cancellation and full unwind", () => {
 
         /// After cancel, order account deleted, so we can't cancel it again.
         it.skip("Cancel already Cancelled/Closed rejected", async () => {});
+
+        it("Cancel Type A after active duration expired by taker", async () => {
+            const waitMs = (activeDurationSeconds.toNumber() + 1) * 1000;
+            await new Promise(resolve => setTimeout(resolve, waitMs));
+
+            await limoHelper.closeOrder({
+                closer: takerWallet,
+                order: order,
+            });
+
+            const orderAccountInfo = await provider.connection.getAccountInfo(order);
+            expect(orderAccountInfo).to.be.null;
+        });
+
+        it("Cancel Type A after active duration expired by maker", async () => {
+            const waitMs = (activeDurationSeconds.toNumber() + 1) * 1000;
+            await new Promise(resolve => setTimeout(resolve, waitMs));
+
+            await limoHelper.closeOrder({
+                closer: makerWallet,
+                order: order,
+            });
+
+            const orderAccountInfo = await provider.connection.getAccountInfo(order);
+            expect(orderAccountInfo).to.be.null;
+        });
+
+        it("Should be rejected if closer is taker and active duration is not expired", async () => {
+            await expectRejects(limoHelper.closeOrder({
+                closer: takerWallet,
+                order: order,
+            }), LimoError.InvalidAccount);
+        });
     });
 
     describe("Cancel Type B order & unwind parent + child vaults", () => {
@@ -263,6 +291,7 @@ describe("Safe cancellation and full unwind", () => {
         const orderOutputAmount = new BN(200000000000);
         const tpOutputAmount = new BN(120000000000);
         const slOutputAmount = new BN(80000000000);
+        const activeDurationSeconds = new BN(10);
 
         async function calcMinOutputAmount(inputAmount: BN, order: web3.PublicKey): Promise<BN> {
             const orderAccount = await limoHelper.getOrderAccount(order);
@@ -281,23 +310,17 @@ describe("Safe cancellation and full unwind", () => {
                 orderType: OrderType.LimitParent,
                 tpOutputAmount: tpOutputAmount,
                 slOutputAmount: slOutputAmount,
+                activeDurationSeconds: activeDurationSeconds,
             });
 
             order = orderPubkey;
             tpOrder = tpOrderPubkey;
             slOrder = slOrderPubkey;
 
-            await limoHelper.updateOrder({
-                maker: makerWallet,
-                order: order,
-                mode: UpdateOrderMode.UpdatePermissionless,
-                value: new BN(1).toBuffer(),
-            });
-            await limoHelper.updateOrder({
-                maker: makerWallet,
-                order: order,
-                mode: UpdateOrderMode.UpdateCounterparty,
-                value: taker.publicKey.toBuffer(),
+            await limoHelper.updateGlobalConfig({
+                payer: payerWallet,
+                mode: UpdateGlobalConfigMode.UpdateAllowedTaker,
+                value: Array.from(taker.publicKey.toBuffer()),
             });
         });
 
@@ -330,7 +353,7 @@ describe("Safe cancellation and full unwind", () => {
             const outputVaultAtaBalanceBefore = await provider.connection.getTokenAccountBalance(outputVaultAta);
 
             const { signature } = await limoHelper.closeOrder({
-                maker: makerWallet,
+                closer: makerWallet,
                 order: order,
             });
 
@@ -363,7 +386,7 @@ describe("Safe cancellation and full unwind", () => {
             });
 
             await expectRejects(limoHelper.closeOrder({
-                maker: makerWallet,
+                closer: makerWallet,
                 order: order,
             }), LimoError.NotEnoughTimePassedSinceLastUpdate);
 
@@ -376,5 +399,48 @@ describe("Safe cancellation and full unwind", () => {
 
         /// After cancel, order account deleted, so we can't cancel it again.
         it.skip("Cancel already Cancelled/Closed rejected", async () => {});
+
+        it("Cancel Type B after active duration expired by taker", async () => {
+            const waitMs = (activeDurationSeconds.toNumber() + 1) * 1000;
+            await new Promise(resolve => setTimeout(resolve, waitMs));
+
+            await limoHelper.closeOrder({
+                closer: takerWallet,
+                order: order,
+            });
+
+            const orderAccountInfo = await provider.connection.getAccountInfo(order);
+            const tpOrderAccountInfo = await provider.connection.getAccountInfo(tpOrder);
+            const slOrderAccountInfo = await provider.connection.getAccountInfo(slOrder);
+
+            expect(orderAccountInfo).to.be.null;
+            expect(tpOrderAccountInfo).to.be.null;
+            expect(slOrderAccountInfo).to.be.null;
+        });
+
+        it("Cancel Type B after active duration expired by maker", async () => {
+            const waitMs = (activeDurationSeconds.toNumber() + 1) * 1000;
+            await new Promise(resolve => setTimeout(resolve, waitMs));
+
+            await limoHelper.closeOrder({
+                closer: makerWallet,
+                order: order,
+            });
+
+            const orderAccountInfo = await provider.connection.getAccountInfo(order);
+            const tpOrderAccountInfo = await provider.connection.getAccountInfo(tpOrder);
+            const slOrderAccountInfo = await provider.connection.getAccountInfo(slOrder);
+
+            expect(orderAccountInfo).to.be.null;
+            expect(tpOrderAccountInfo).to.be.null;
+            expect(slOrderAccountInfo).to.be.null;
+        });
+
+        it("Should be rejected if closer is taker and active duration is not expired", async () => {
+            await expectRejects(limoHelper.closeOrder({
+                closer: takerWallet,
+                order: order,
+            }), LimoError.InvalidAccount);
+        });
     });
 });
