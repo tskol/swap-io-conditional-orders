@@ -53,6 +53,7 @@ export const UpdateGlobalConfigMode = {
     UpdateSlMaxUpwardDeviationBps: 16,
     UpdateTpSlMinDistanceBps: 17,
     UpdateAllowedTaker: 18,
+    UpdateKeeperFeeBps: 19,
 }
 
 export const LimoError = {
