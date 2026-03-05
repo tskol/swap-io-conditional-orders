@@ -99,6 +99,7 @@ pub fn handler_take_order(
         input_to_send_to_taker,
         output_to_send_to_maker,
         output_to_send_to_protocol,
+        output_keeper_fee,
     } = operations::take_order(
         global_config,
         order,
@@ -123,6 +124,7 @@ pub fn handler_take_order(
         input_to_send_to_taker,
         output_to_send_to_maker,
         output_to_send_to_protocol,
+        output_keeper_fee,
     )?;
 
     tip_transfer_and_validation(
@@ -327,6 +329,7 @@ fn transfer_output_and_input(
     input_to_send_to_taker: u64,
     output_to_send_to_maker: u64,
     output_to_send_to_protocol: u64,
+    output_keeper_fee: u64,
 ) -> Result<()> {
     let gc = ctx.accounts.global_config.key();
     let seeds: &[&[u8]] = global_seeds!(global_config.pda_authority_bump as u8, &gc);
@@ -371,13 +374,18 @@ fn transfer_output_and_input(
         maker_output_ata_account.to_account_info()
     };
 
+    let output_to_send_to_maker_with_keeper_fee = output_to_send_to_maker
+        .checked_sub(output_keeper_fee)
+        .ok_or(LimoError::MathOverflow)
+        .unwrap();
+
     transfer_from_user_to_token_account(
         ctx.accounts.taker_output_ata.to_account_info(),
         output_destination_token_account.clone(),
         ctx.accounts.taker.to_account_info(),
         ctx.accounts.output_mint.to_account_info(),
         ctx.accounts.output_token_program.to_account_info(),
-        output_to_send_to_maker,
+        output_to_send_to_maker_with_keeper_fee,
         ctx.accounts.output_mint.decimals,
     )?;
 
@@ -393,7 +401,7 @@ fn transfer_output_and_input(
             ctx.accounts.pda_authority.to_account_info(),
             ctx.accounts.maker.to_account_info(),
             seeds,
-            output_to_send_to_maker,
+            output_to_send_to_maker_with_keeper_fee,
         )?;
     }
 

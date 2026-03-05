@@ -325,19 +325,16 @@ pub fn take_order_calcs(
         return err!(LimoError::OrderOutputAmountInvalid);
     }
 
-    let output_to_send_to_maker_with_keeper_fee = output_to_send_to_maker
-        .checked_sub(output_keeper_fee)
-        .ok_or(LimoError::MathOverflow)
-        .unwrap();
-
     msg!("input_to_send_to_taker: {}", input_to_send_to_taker);
     msg!("output_to_send_to_maker: {}", output_to_send_to_maker);
     msg!("output_to_send_to_protocol: {}", output_to_send_to_protocol);
+    msg!("output_keeper_fee: {}", output_keeper_fee);
 
     Ok(TakeOrderEffects {
         input_to_send_to_taker,
-        output_to_send_to_maker: output_to_send_to_maker_with_keeper_fee,
+        output_to_send_to_maker,
         output_to_send_to_protocol,
+        output_keeper_fee,
     })
 }
 
@@ -366,6 +363,7 @@ pub fn take_order(
         input_to_send_to_taker,
         output_to_send_to_maker,
         output_to_send_to_protocol,
+        output_keeper_fee,
     } = take_order_calcs(order, global_config, input_amount, output_amount)?;
 
     let is_child_order = order.parent_order != Pubkey::default();
@@ -404,6 +402,7 @@ pub fn take_order(
         input_to_send_to_taker,
         output_to_send_to_maker,
         output_to_send_to_protocol,
+        output_keeper_fee,
     })
 }
 
