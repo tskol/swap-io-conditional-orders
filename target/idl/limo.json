@@ -1114,7 +1114,7 @@
             "type": "u16"
           },
           {
-            "name": "keeperFeeBps",
+            "name": "keeperTakeFeeBps",
             "type": "u16"
           },
           {
@@ -1288,7 +1288,7 @@
             "name": "UpdateAllowedTaker"
           },
           {
-            "name": "UpdateKeeperFeeBps"
+            "name": "UpdateKeeperTakeFeeBps"
           }
         ]
       }

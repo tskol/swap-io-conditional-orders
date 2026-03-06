@@ -1114,7 +1114,7 @@ export type Limo = {
             "type": "u16"
           },
           {
-            "name": "keeperFeeBps",
+            "name": "keeperTakeFeeBps",
             "type": "u16"
           },
           {
@@ -1288,7 +1288,7 @@ export type Limo = {
             "name": "UpdateAllowedTaker"
           },
           {
-            "name": "UpdateKeeperFeeBps"
+            "name": "UpdateKeeperTakeFeeBps"
           }
         ]
       }
@@ -2902,7 +2902,7 @@ export const IDL: Limo = {
             "type": "u16"
           },
           {
-            "name": "keeperFeeBps",
+            "name": "keeperTakeFeeBps",
             "type": "u16"
           },
           {
@@ -3076,7 +3076,7 @@ export const IDL: Limo = {
             "name": "UpdateAllowedTaker"
           },
           {
-            "name": "UpdateKeeperFeeBps"
+            "name": "UpdateKeeperTakeFeeBps"
           }
         ]
       }

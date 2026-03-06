@@ -405,7 +405,7 @@ describe("Type B Parent Limit Orders", () => {
             const keeperFeeBps = new BN(1000);
             await limoHelper.updateGlobalConfig({
                 payer: payerWallet,
-                mode: UpdateGlobalConfigMode.UpdateKeeperFeeBps,
+                mode: UpdateGlobalConfigMode.UpdateKeeperTakeFeeBps,
                 value: Array.from(keeperFeeBps.toArray("le", 2)),
             });
 
@@ -478,7 +478,7 @@ describe("Type B Parent Limit Orders", () => {
 
             await limoHelper.updateGlobalConfig({
                 payer: payerWallet,
-                mode: UpdateGlobalConfigMode.UpdateKeeperFeeBps,
+                mode: UpdateGlobalConfigMode.UpdateKeeperTakeFeeBps,
                 value: Array.from(new BN(0).toArray("le", 2)),
             });
         });
