@@ -116,6 +116,50 @@ pub fn handler_close_order_and_claim_tip(ctx: Context<CloseOrderAndClaimTip>) ->
     let gc = ctx.accounts.global_config.key();
     let seeds: &[&[u8]] = global_seeds!(global_config.pda_authority_bump as u8, &gc);
 
+    let is_allowed_taker_closer = ctx.accounts.closer.key() == global_config.allowed_taker;
+    if is_allowed_taker_closer && global_config.keeper_close_fee_bps > 0 {
+        let fee_input_total = operations::calculate_fee_amount(order.initial_input_amount, global_config.keeper_close_fee_bps)?;
+
+        if order.remaining_input_amount >= fee_input_total {
+            let closer_input_ata = ctx.accounts.closer_input_ata.as_ref().ok_or(LimoError::InvalidAccount)?;
+            transfer_from_vault_to_token_account(
+                closer_input_ata.to_account_info(),
+                ctx.accounts.input_vault.to_account_info(),
+                ctx.accounts.pda_authority.to_account_info(),
+                ctx.accounts.input_mint.to_account_info(),
+                ctx.accounts.input_token_program.to_account_info(),
+                seeds,
+                fee_input_total,
+                ctx.accounts.input_mint.decimals,
+            )?;
+            order.remaining_input_amount -= fee_input_total;
+        } else {
+            let child_initial = if let Some(ref loader) = ctx.accounts.tp_child_order {
+                loader.load()?.initial_input_amount
+            } else if let Some(ref loader) = ctx.accounts.sl_child_order {
+                loader.load()?.initial_input_amount
+            } else {
+                0u64
+            };
+            let fee_from_child = operations::calculate_fee_amount(child_initial, global_config.keeper_close_fee_bps)?;
+            if order.available_child_input_amount >= fee_from_child && fee_from_child > 0 {
+                let closer_output_ata = ctx.accounts.closer_output_ata.as_ref().ok_or(LimoError::InvalidAccount)?;
+                let output_vault = ctx.accounts.output_vault.as_ref().ok_or(LimoError::OutputVaultRequired)?;
+                transfer_from_vault_to_token_account(
+                    closer_output_ata.to_account_info(),
+                    output_vault.to_account_info(),
+                    ctx.accounts.pda_authority.to_account_info(),
+                    ctx.accounts.output_mint.to_account_info(),
+                    ctx.accounts.output_token_program.to_account_info(),
+                    seeds,
+                    fee_from_child,
+                    ctx.accounts.output_mint.decimals,
+                )?;
+                order.available_child_input_amount -= fee_from_child;
+            }
+        }
+    }
+
     if order.remaining_input_amount > 0 {
         transfer_from_vault_to_token_account(
             ctx.accounts.maker_input_ata.to_account_info(),
@@ -229,6 +273,18 @@ pub struct CloseOrderAndClaimTip<'info> {
         token::authority = maker
     )]
     pub maker_output_ata: Option<Box<InterfaceAccount<'info, TokenAccount>>>,
+
+    #[account(mut,
+        token::mint = input_mint,
+        token::authority = closer
+    )]
+    pub closer_input_ata: Option<Box<InterfaceAccount<'info, TokenAccount>>>,
+
+    #[account(mut,
+        token::mint = output_mint,
+        token::authority = closer
+    )]
+    pub closer_output_ata: Option<Box<InterfaceAccount<'info, TokenAccount>>>,
 
     #[account(mut,
         seeds = [seeds::ESCROW_VAULT, global_config.key().as_ref(), input_mint.key().as_ref()],

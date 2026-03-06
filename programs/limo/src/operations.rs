@@ -429,7 +429,8 @@ pub fn update_global_config(
         | UpdateGlobalConfigMode::UpdateParentFillFeeProtocolBps
         | UpdateGlobalConfigMode::UpdateTpSlChildFeeKeeperBps
         | UpdateGlobalConfigMode::UpdateTpSlChildFeeProtocolBps
-        | UpdateGlobalConfigMode::UpdateKeeperTakeFeeBps => {
+        | UpdateGlobalConfigMode::UpdateKeeperTakeFeeBps
+        | UpdateGlobalConfigMode::UpdateKeeperCloseFeeBps => {
             let value = u16::from_le_bytes(value[0..2].try_into().unwrap());
             update_global_config_bps(global_config, mode, value, ts)?;
         }
@@ -740,6 +741,10 @@ fn update_global_config_bps(
         UpdateGlobalConfigMode::UpdateKeeperTakeFeeBps => {
             msg!("new={} prev={}", value, global_config.keeper_take_fee_bps);
             global_config.keeper_take_fee_bps = value;
+        }
+        UpdateGlobalConfigMode::UpdateKeeperCloseFeeBps => {
+            msg!("new={} prev={}", value, global_config.keeper_close_fee_bps);
+            global_config.keeper_close_fee_bps = value;
         }
         _ => return Err(LimoError::InvalidConfigOption.into()),
     }

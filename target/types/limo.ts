@@ -318,6 +318,18 @@ export type Limo = {
           "isOptional": true
         },
         {
+          "name": "closerInputAta",
+          "isMut": true,
+          "isSigner": false,
+          "isOptional": true
+        },
+        {
+          "name": "closerOutputAta",
+          "isMut": true,
+          "isSigner": false,
+          "isOptional": true
+        },
+        {
           "name": "inputVault",
           "isMut": true,
           "isSigner": false
@@ -1122,11 +1134,24 @@ export type Limo = {
             "type": "u64"
           },
           {
+            "name": "keeperCloseFeeBps",
+            "type": "u16"
+          },
+          {
+            "name": "padding0",
+            "type": {
+              "array": [
+                "u16",
+                3
+              ]
+            }
+          },
+          {
             "name": "padding1",
             "type": {
               "array": [
                 "u64",
-                9
+                8
               ]
             }
           },
@@ -1289,6 +1314,9 @@ export type Limo = {
           },
           {
             "name": "UpdateKeeperTakeFeeBps"
+          },
+          {
+            "name": "UpdateKeeperCloseFeeBps"
           }
         ]
       }
@@ -2106,6 +2134,18 @@ export const IDL: Limo = {
           "isOptional": true
         },
         {
+          "name": "closerInputAta",
+          "isMut": true,
+          "isSigner": false,
+          "isOptional": true
+        },
+        {
+          "name": "closerOutputAta",
+          "isMut": true,
+          "isSigner": false,
+          "isOptional": true
+        },
+        {
           "name": "inputVault",
           "isMut": true,
           "isSigner": false
@@ -2910,11 +2950,24 @@ export const IDL: Limo = {
             "type": "u64"
           },
           {
+            "name": "keeperCloseFeeBps",
+            "type": "u16"
+          },
+          {
+            "name": "padding0",
+            "type": {
+              "array": [
+                "u16",
+                3
+              ]
+            }
+          },
+          {
             "name": "padding1",
             "type": {
               "array": [
                 "u64",
-                9
+                8
               ]
             }
           },
@@ -3077,6 +3130,9 @@ export const IDL: Limo = {
           },
           {
             "name": "UpdateKeeperTakeFeeBps"
+          },
+          {
+            "name": "UpdateKeeperCloseFeeBps"
           }
         ]
       }

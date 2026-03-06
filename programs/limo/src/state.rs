@@ -186,7 +186,10 @@ pub struct GlobalConfig {
     pub keeper_take_fee_bps: u16,
 
     pub order_close_delay_seconds: u64,
-    pub padding1: [u64; 9],
+
+    pub keeper_close_fee_bps: u16,
+    pub padding0: [u16; 3],
+    pub padding1: [u64; 8],
 
     pub pda_authority_previous_lamports_balance: u64,
     pub total_tip_amount: u64,
@@ -240,7 +243,9 @@ impl Default for GlobalConfig {
             tp_sl_child_fee_protocol_bps: 0,
             txn_fee_cost: 0,
             keeper_take_fee_bps: 0,
-            padding1: [0; 9],
+            keeper_close_fee_bps: 0,
+            padding0: [0; 3],
+            padding1: [0; 8],
             padding2: [0; 241],
             padding3: [0; 1],
         }
@@ -282,6 +287,7 @@ pub enum UpdateGlobalConfigMode {
     UpdateTpSlMinDistanceBps = 17,
     UpdateAllowedTaker = 18,
     UpdateKeeperTakeFeeBps = 19,
+    UpdateKeeperCloseFeeBps = 20,
 }
 
 #[derive(PartialEq, Eq, Clone, Debug)]
