@@ -667,6 +667,18 @@ export class LimoHelper extends TransactionSender {
           false,
           outputTokenProgram,
         );
+        const closerInputAta = spl.getAssociatedTokenAddressSync(
+          inputMint,
+          args.closer.publicKey,
+          false,
+          inputTokenProgram,
+        );
+        const closerOutputAta = spl.getAssociatedTokenAddressSync(
+          outputMint,
+          args.closer.publicKey,
+          false,
+          outputTokenProgram,
+        );
 
         // Determine if child orders are needed (LimitParent = 1)
         const tpChildOrderPubkey = orderType === 1 && tpChildOrder.toBase58() !== web3.PublicKey.default.toBase58() 
@@ -689,6 +701,8 @@ export class LimoHelper extends TransactionSender {
             outputMint: outputMint,
             makerInputAta: makerInputAta,
             makerOutputAta: makerOutputAta,
+            closerInputAta: closerInputAta,
+            closerOutputAta: closerOutputAta,
             inputVault: inputVault,
             outputVault: outputVault,
             inputTokenProgram: inputTokenProgram,

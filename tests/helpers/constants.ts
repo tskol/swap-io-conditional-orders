@@ -54,6 +54,7 @@ export const UpdateGlobalConfigMode = {
     UpdateTpSlMinDistanceBps: 17,
     UpdateAllowedTaker: 18,
     UpdateKeeperTakeFeeBps: 19,
+    UpdateKeeperCloseFeeBps: 20,
 }
 
 export const LimoError = {
