@@ -217,6 +217,10 @@
         {
           "name": "slOutputAmount",
           "type": "u64"
+        },
+        {
+          "name": "activeDurationSeconds",
+          "type": "u64"
         }
       ]
     },
@@ -256,9 +260,14 @@
       "name": "closeOrderAndClaimTip",
       "accounts": [
         {
-          "name": "maker",
+          "name": "closer",
           "isMut": true,
           "isSigner": true
+        },
+        {
+          "name": "maker",
+          "isMut": true,
+          "isSigner": false
         },
         {
           "name": "order",
@@ -304,6 +313,18 @@
         },
         {
           "name": "makerOutputAta",
+          "isMut": true,
+          "isSigner": false,
+          "isOptional": true
+        },
+        {
+          "name": "closerInputAta",
+          "isMut": true,
+          "isSigner": false,
+          "isOptional": true
+        },
+        {
+          "name": "closerOutputAta",
           "isMut": true,
           "isSigner": false,
           "isOptional": true
@@ -978,11 +999,15 @@
             "type": "publicKey"
           },
           {
+            "name": "expiryTimestamp",
+            "type": "u64"
+          },
+          {
             "name": "padding",
             "type": {
               "array": [
                 "u64",
-                15
+                14
               ]
             }
           }
@@ -1101,24 +1126,32 @@
             "type": "u16"
           },
           {
-            "name": "padding0",
-            "type": {
-              "array": [
-                "u8",
-                2
-              ]
-            }
+            "name": "keeperTakeFeeBps",
+            "type": "u16"
           },
           {
             "name": "orderCloseDelaySeconds",
             "type": "u64"
           },
           {
+            "name": "keeperCloseFeeBps",
+            "type": "u16"
+          },
+          {
+            "name": "padding0",
+            "type": {
+              "array": [
+                "u16",
+                3
+              ]
+            }
+          },
+          {
             "name": "padding1",
             "type": {
               "array": [
                 "u64",
-                9
+                8
               ]
             }
           },
@@ -1278,6 +1311,12 @@
           },
           {
             "name": "UpdateAllowedTaker"
+          },
+          {
+            "name": "UpdateKeeperTakeFeeBps"
+          },
+          {
+            "name": "UpdateKeeperCloseFeeBps"
           }
         ]
       }
@@ -1766,6 +1805,11 @@
       "code": 6059,
       "name": "OrderParametersInvalid",
       "msg": "The order parameters are invalid"
+    },
+    {
+      "code": 6060,
+      "name": "OrderExpired",
+      "msg": "Order expired"
     }
   ]
 }

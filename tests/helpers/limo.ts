@@ -275,6 +275,7 @@ export class LimoHelper extends TransactionSender {
         orderType: number;
         tpOutputAmount?: anchor.BN;
         slOutputAmount?: anchor.BN;
+        activeDurationSeconds?: anchor.BN;
         globalConfig?: web3.PublicKey;
       }): Promise<{
         signature: string;
@@ -361,6 +362,7 @@ export class LimoHelper extends TransactionSender {
           args.orderType,
           args.tpOutputAmount ?? new anchor.BN(0),
           args.slOutputAmount ?? new anchor.BN(0),
+          args.activeDurationSeconds ?? new anchor.BN(0),
         )
         .accounts({
           maker: args.maker.publicKey,
@@ -625,7 +627,7 @@ export class LimoHelper extends TransactionSender {
       }
 
       async closeOrder(args: {
-        maker: Wallet;
+        closer: Wallet;
         order: web3.PublicKey;
         globalConfig?: web3.PublicKey;
       }): Promise<{
@@ -640,6 +642,7 @@ export class LimoHelper extends TransactionSender {
         const orderType = orderAccount.orderType;
         const tpChildOrder = orderAccount.tpChildOrder;
         const slChildOrder = orderAccount.slChildOrder;
+        const maker = orderAccount.maker;
 
         // Get vaults
         const { vault: inputVault } = await this.getVault(inputMint, globalConfig);
@@ -654,13 +657,25 @@ export class LimoHelper extends TransactionSender {
         // Get maker ATAs
         const makerInputAta = spl.getAssociatedTokenAddressSync(
           inputMint,
-          args.maker.publicKey,
+          maker,
           false,
           inputTokenProgram,
         );
         const makerOutputAta = spl.getAssociatedTokenAddressSync(
           outputMint,
-          args.maker.publicKey,
+          maker,
+          false,
+          outputTokenProgram,
+        );
+        const closerInputAta = spl.getAssociatedTokenAddressSync(
+          inputMint,
+          args.closer.publicKey,
+          false,
+          inputTokenProgram,
+        );
+        const closerOutputAta = spl.getAssociatedTokenAddressSync(
+          outputMint,
+          args.closer.publicKey,
           false,
           outputTokenProgram,
         );
@@ -675,7 +690,8 @@ export class LimoHelper extends TransactionSender {
 
         const ix = await this.program.methods.closeOrderAndClaimTip()
           .accounts({
-            maker: args.maker.publicKey,
+            closer: args.closer.publicKey,
+            maker: maker,
             order: args.order,
             tpChildOrder: tpChildOrderPubkey,
             slChildOrder: slChildOrderPubkey,
@@ -685,6 +701,8 @@ export class LimoHelper extends TransactionSender {
             outputMint: outputMint,
             makerInputAta: makerInputAta,
             makerOutputAta: makerOutputAta,
+            closerInputAta: closerInputAta,
+            closerOutputAta: closerOutputAta,
             inputVault: inputVault,
             outputVault: outputVault,
             inputTokenProgram: inputTokenProgram,
@@ -693,7 +711,7 @@ export class LimoHelper extends TransactionSender {
           })
           .instruction();
 
-        const { signature } = await this.sendTransaction(args.maker, [ix]);
+        const { signature } = await this.sendTransaction(args.closer, [ix]);
         return { signature };
       }
 

@@ -24,6 +24,15 @@ pub fn handler_close_order_and_claim_tip(ctx: Context<CloseOrderAndClaimTip>) ->
     require!(parsed_order_type == OrderType::LimitParent || parsed_order_type == OrderType::Vanilla, LimoError::OrderTypeInvalid);
 
     let ts = u64::try_from(Clock::get()?.unix_timestamp).unwrap();
+    // 0 means "no expiry" (backward compatibility: old orders had padding here)
+    let is_order_expired = order.expiry_timestamp != 0 && order.expiry_timestamp < ts;
+
+    validate_closer(
+        ctx.accounts.closer.key(),
+        ctx.accounts.maker.key(),
+        global_config.allowed_taker,
+        is_order_expired,
+    )?;
 
     if parsed_order_type == OrderType::LimitParent {
         if order.tp_child_order != Pubkey::default() {
@@ -107,6 +116,50 @@ pub fn handler_close_order_and_claim_tip(ctx: Context<CloseOrderAndClaimTip>) ->
     let gc = ctx.accounts.global_config.key();
     let seeds: &[&[u8]] = global_seeds!(global_config.pda_authority_bump as u8, &gc);
 
+    let is_allowed_taker_closer = ctx.accounts.closer.key() == global_config.allowed_taker;
+    if is_allowed_taker_closer && global_config.keeper_close_fee_bps > 0 {
+        let fee_input_total = operations::calculate_fee_amount(order.initial_input_amount, global_config.keeper_close_fee_bps)?;
+
+        if order.remaining_input_amount >= fee_input_total {
+            let closer_input_ata = ctx.accounts.closer_input_ata.as_ref().ok_or(LimoError::InvalidAccount)?;
+            transfer_from_vault_to_token_account(
+                closer_input_ata.to_account_info(),
+                ctx.accounts.input_vault.to_account_info(),
+                ctx.accounts.pda_authority.to_account_info(),
+                ctx.accounts.input_mint.to_account_info(),
+                ctx.accounts.input_token_program.to_account_info(),
+                seeds,
+                fee_input_total,
+                ctx.accounts.input_mint.decimals,
+            )?;
+            order.remaining_input_amount -= fee_input_total;
+        } else {
+            let child_initial = if let Some(ref loader) = ctx.accounts.tp_child_order {
+                loader.load()?.initial_input_amount
+            } else if let Some(ref loader) = ctx.accounts.sl_child_order {
+                loader.load()?.initial_input_amount
+            } else {
+                0u64
+            };
+            let fee_from_child = operations::calculate_fee_amount(child_initial, global_config.keeper_close_fee_bps)?;
+            if order.available_child_input_amount >= fee_from_child && fee_from_child > 0 {
+                let closer_output_ata = ctx.accounts.closer_output_ata.as_ref().ok_or(LimoError::InvalidAccount)?;
+                let output_vault = ctx.accounts.output_vault.as_ref().ok_or(LimoError::OutputVaultRequired)?;
+                transfer_from_vault_to_token_account(
+                    closer_output_ata.to_account_info(),
+                    output_vault.to_account_info(),
+                    ctx.accounts.pda_authority.to_account_info(),
+                    ctx.accounts.output_mint.to_account_info(),
+                    ctx.accounts.output_token_program.to_account_info(),
+                    seeds,
+                    fee_from_child,
+                    ctx.accounts.output_mint.decimals,
+                )?;
+                order.available_child_input_amount -= fee_from_child;
+            }
+        }
+    }
+
     if order.remaining_input_amount > 0 {
         transfer_from_vault_to_token_account(
             ctx.accounts.maker_input_ata.to_account_info(),
@@ -160,28 +213,32 @@ pub fn handler_close_order_and_claim_tip(ctx: Context<CloseOrderAndClaimTip>) ->
 #[derive(Accounts)]
 pub struct CloseOrderAndClaimTip<'info> {
     #[account(mut)]
-    pub maker: Signer<'info>,
+    pub closer: Signer<'info>,
+
+    #[account(mut)]
+    /// CHECK: maker is a valid account
+    pub maker: AccountInfo<'info>,
 
     #[account(mut,
         has_one = maker,
         has_one = global_config,
         has_one = input_mint,
         has_one = output_mint,
-        close = maker
+        close = closer
     )]
     pub order: AccountLoader<'info, Order>,
 
     #[account(mut,
         has_one = maker,
         has_one = global_config,
-        close = maker,
+        close = closer,
     )]
     pub tp_child_order: Option<AccountLoader<'info, Order>>,
     
     #[account(mut,
         has_one = maker,
         has_one = global_config,
-        close = maker,
+        close = closer,
     )]
     pub sl_child_order: Option<AccountLoader<'info, Order>>,
 
@@ -216,6 +273,18 @@ pub struct CloseOrderAndClaimTip<'info> {
         token::authority = maker
     )]
     pub maker_output_ata: Option<Box<InterfaceAccount<'info, TokenAccount>>>,
+
+    #[account(mut,
+        token::mint = input_mint,
+        token::authority = closer
+    )]
+    pub closer_input_ata: Option<Box<InterfaceAccount<'info, TokenAccount>>>,
+
+    #[account(mut,
+        token::mint = output_mint,
+        token::authority = closer
+    )]
+    pub closer_output_ata: Option<Box<InterfaceAccount<'info, TokenAccount>>>,
 
     #[account(mut,
         seeds = [seeds::ESCROW_VAULT, global_config.key().as_ref(), input_mint.key().as_ref()],
@@ -261,5 +330,15 @@ fn close_order_and_claim_tip<'a>(
         )?;
     }
 
+    Ok(())
+}
+
+fn validate_closer(
+    closer: Pubkey,
+    maker: Pubkey,
+    allowed_taker: Pubkey,
+    is_order_expired: bool,
+) -> Result<()> {
+    require!(is_order_expired && closer == allowed_taker || closer == maker, LimoError::InvalidAccount);
     Ok(())
 }

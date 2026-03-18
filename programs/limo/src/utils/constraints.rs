@@ -7,7 +7,7 @@ use anchor_spl::{
 };
 use express_relay::{cpi::accounts::CheckPermission, sdk::cpi::check_permission_cpi};
 
-use crate::{GlobalConfig, LimoError};
+use crate::{GlobalConfig, Order, LimoError};
 
 pub fn emergency_mode_disabled(global_config: &AccountLoader<GlobalConfig>) -> Result<()> {
     if global_config.load()?.emergency_mode > 0 {
@@ -33,6 +33,19 @@ pub fn create_new_orders_disabled(global_config: &AccountLoader<GlobalConfig>) -
 pub fn taking_orders_disabled(global_config: &AccountLoader<GlobalConfig>) -> Result<()> {
     if global_config.load()?.orders_taking_blocked > 0 {
         return err!(LimoError::OrderTakingBlocked);
+    }
+    Ok(())
+}
+
+pub fn order_expired(order: &AccountLoader<Order>) -> Result<()> {
+    let expiry = order.load()?.expiry_timestamp;
+    // 0 means "no expiry" (backward compatibility: old orders had padding here)
+    if expiry == 0 {
+        return Ok(());
+    }
+    let timestamp: u64 = Clock::get()?.unix_timestamp.try_into().expect("Negative timestamp");
+    if expiry < timestamp {
+        return err!(LimoError::OrderExpired);
     }
     Ok(())
 }

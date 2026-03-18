@@ -217,6 +217,10 @@ export type Limo = {
         {
           "name": "slOutputAmount",
           "type": "u64"
+        },
+        {
+          "name": "activeDurationSeconds",
+          "type": "u64"
         }
       ]
     },
@@ -256,9 +260,14 @@ export type Limo = {
       "name": "closeOrderAndClaimTip",
       "accounts": [
         {
-          "name": "maker",
+          "name": "closer",
           "isMut": true,
           "isSigner": true
+        },
+        {
+          "name": "maker",
+          "isMut": true,
+          "isSigner": false
         },
         {
           "name": "order",
@@ -304,6 +313,18 @@ export type Limo = {
         },
         {
           "name": "makerOutputAta",
+          "isMut": true,
+          "isSigner": false,
+          "isOptional": true
+        },
+        {
+          "name": "closerInputAta",
+          "isMut": true,
+          "isSigner": false,
+          "isOptional": true
+        },
+        {
+          "name": "closerOutputAta",
           "isMut": true,
           "isSigner": false,
           "isOptional": true
@@ -978,11 +999,15 @@ export type Limo = {
             "type": "publicKey"
           },
           {
+            "name": "expiryTimestamp",
+            "type": "u64"
+          },
+          {
             "name": "padding",
             "type": {
               "array": [
                 "u64",
-                15
+                14
               ]
             }
           }
@@ -1101,24 +1126,32 @@ export type Limo = {
             "type": "u16"
           },
           {
-            "name": "padding0",
-            "type": {
-              "array": [
-                "u8",
-                2
-              ]
-            }
+            "name": "keeperTakeFeeBps",
+            "type": "u16"
           },
           {
             "name": "orderCloseDelaySeconds",
             "type": "u64"
           },
           {
+            "name": "keeperCloseFeeBps",
+            "type": "u16"
+          },
+          {
+            "name": "padding0",
+            "type": {
+              "array": [
+                "u16",
+                3
+              ]
+            }
+          },
+          {
             "name": "padding1",
             "type": {
               "array": [
                 "u64",
-                9
+                8
               ]
             }
           },
@@ -1278,6 +1311,12 @@ export type Limo = {
           },
           {
             "name": "UpdateAllowedTaker"
+          },
+          {
+            "name": "UpdateKeeperTakeFeeBps"
+          },
+          {
+            "name": "UpdateKeeperCloseFeeBps"
           }
         ]
       }
@@ -1766,6 +1805,11 @@ export type Limo = {
       "code": 6059,
       "name": "OrderParametersInvalid",
       "msg": "The order parameters are invalid"
+    },
+    {
+      "code": 6060,
+      "name": "OrderExpired",
+      "msg": "Order expired"
     }
   ]
 };
@@ -1989,6 +2033,10 @@ export const IDL: Limo = {
         {
           "name": "slOutputAmount",
           "type": "u64"
+        },
+        {
+          "name": "activeDurationSeconds",
+          "type": "u64"
         }
       ]
     },
@@ -2028,9 +2076,14 @@ export const IDL: Limo = {
       "name": "closeOrderAndClaimTip",
       "accounts": [
         {
-          "name": "maker",
+          "name": "closer",
           "isMut": true,
           "isSigner": true
+        },
+        {
+          "name": "maker",
+          "isMut": true,
+          "isSigner": false
         },
         {
           "name": "order",
@@ -2076,6 +2129,18 @@ export const IDL: Limo = {
         },
         {
           "name": "makerOutputAta",
+          "isMut": true,
+          "isSigner": false,
+          "isOptional": true
+        },
+        {
+          "name": "closerInputAta",
+          "isMut": true,
+          "isSigner": false,
+          "isOptional": true
+        },
+        {
+          "name": "closerOutputAta",
           "isMut": true,
           "isSigner": false,
           "isOptional": true
@@ -2750,11 +2815,15 @@ export const IDL: Limo = {
             "type": "publicKey"
           },
           {
+            "name": "expiryTimestamp",
+            "type": "u64"
+          },
+          {
             "name": "padding",
             "type": {
               "array": [
                 "u64",
-                15
+                14
               ]
             }
           }
@@ -2873,24 +2942,32 @@ export const IDL: Limo = {
             "type": "u16"
           },
           {
-            "name": "padding0",
-            "type": {
-              "array": [
-                "u8",
-                2
-              ]
-            }
+            "name": "keeperTakeFeeBps",
+            "type": "u16"
           },
           {
             "name": "orderCloseDelaySeconds",
             "type": "u64"
           },
           {
+            "name": "keeperCloseFeeBps",
+            "type": "u16"
+          },
+          {
+            "name": "padding0",
+            "type": {
+              "array": [
+                "u16",
+                3
+              ]
+            }
+          },
+          {
             "name": "padding1",
             "type": {
               "array": [
                 "u64",
-                9
+                8
               ]
             }
           },
@@ -3050,6 +3127,12 @@ export const IDL: Limo = {
           },
           {
             "name": "UpdateAllowedTaker"
+          },
+          {
+            "name": "UpdateKeeperTakeFeeBps"
+          },
+          {
+            "name": "UpdateKeeperCloseFeeBps"
           }
         ]
       }
@@ -3538,6 +3621,11 @@ export const IDL: Limo = {
       "code": 6059,
       "name": "OrderParametersInvalid",
       "msg": "The order parameters are invalid"
+    },
+    {
+      "code": 6060,
+      "name": "OrderExpired",
+      "msg": "Order expired"
     }
   ]
 };

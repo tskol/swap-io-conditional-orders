@@ -18,29 +18,6 @@ import { OrderStatus, OrderType, LimoError, UpdateGlobalConfigMode, UpdateOrderM
 export const STABLE_PRICE_FEED =
   "0x8b1e8e689fbb95ece35155a8b42cb9f1b14208a2f6507866a9a90e8dc955289a";
 
-const USDC_MINT = new web3.PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
-
-export async function initializeLimo(
-  provider: anchor.AnchorProvider,
-  payer: web3.Keypair,
-) {
-  const mainAccounts = generateRandomLimoAccounts();
-  const payerWallet = new anchor.Wallet(payer);
-
-  const limoHelper = new LimoHelper(provider);
-  
-  await limoHelper.initializeGlobalConfig({
-    payer: payerWallet,
-  });
-
-//   await airdrop(mainAccounts.publicKeys.admin);
-
-  return {
-    limoHelper,
-    mainAccounts,
-  };
-}
-
 describe("Type B Child Limit Orders", () => {
     const commitment: web3.Commitment = "confirmed";
     const envProvider = anchor.AnchorProvider.env();
@@ -271,6 +248,7 @@ describe("Type B Child Limit Orders", () => {
         const orderOutputAmount = new BN(200000000000);
         const tpOutputAmount = new BN(120000000000);
         const slOutputAmount = new BN(80000000000);
+        const activeDurationSeconds = new BN(10);
 
         async function calcMinOutputAmount(inputAmount: BN, order: web3.PublicKey): Promise<BN> {
             const orderAccount = await limoHelper.getOrderAccount(order);
@@ -305,6 +283,7 @@ describe("Type B Child Limit Orders", () => {
                 orderType: OrderType.LimitParent,
                 tpOutputAmount: tpOutputAmount,
                 slOutputAmount: slOutputAmount,
+                activeDurationSeconds: activeDurationSeconds,
             });
             order = orderPubkey;
             tpOrder = tpOrderPubkey;
@@ -579,6 +558,137 @@ describe("Type B Child Limit Orders", () => {
                 LimoError.OrderInputAmountTooLarge,
             );
         });
+
+        it("Should reject fill order when order is expired", async () => {
+            await limoHelper.updateGlobalConfig({
+                payer: payerWallet,
+                mode: UpdateGlobalConfigMode.UpdateAllowedTaker,
+                value: Array.from(taker.publicKey.toBuffer()),
+            });
+
+            const waitMs = (activeDurationSeconds.toNumber() + 1) * 1000;
+            await new Promise(resolve => setTimeout(resolve, waitMs));
+
+            const fillInputAmount = orderOutputAmount;
+            const fillMinOutputAmount = await calcMinOutputAmount(fillInputAmount, tpOrder);
+
+            await expectRejects(
+                limoHelper.takeOrder({
+                    taker: takerWallet,
+                    order: tpOrder,
+                    inputAmount: fillInputAmount,
+                    minOutputAmount: fillMinOutputAmount,
+                    tipAmountPermissionlessTaking: new BN(0),
+                }),
+                LimoError.OrderExpired,
+            );
+        });
+
+        it("Should get keeper fee", async () => {
+            const keeperFeeBps = new BN(1000);
+            await limoHelper.updateGlobalConfig({
+                payer: payerWallet,
+                mode: UpdateGlobalConfigMode.UpdateKeeperTakeFeeBps,
+                value: Array.from(keeperFeeBps.toArray("le", 2)),
+            });
+
+            const { signatures } = await limoHelper.takeOrder({
+                taker: takerWallet,
+                order: order,
+                inputAmount: orderInputAmount,
+                minOutputAmount: await calcMinOutputAmount(orderInputAmount, order),
+                tipAmountPermissionlessTaking: new BN(0),
+            });
+
+            const fillInputAmount = orderOutputAmount;
+            const fillMinOutputAmount = await calcMinOutputAmount(fillInputAmount, tpOrder);
+
+            const makerInputAta = spl.getAssociatedTokenAddressSync(
+                inputMint,
+                maker.publicKey
+            );
+            const makerOutputAta = spl.getAssociatedTokenAddressSync(
+                outputMint,
+                maker.publicKey
+            );
+            const takerInputAta = spl.getAssociatedTokenAddressSync(
+                inputMint,
+                taker.publicKey
+            );
+            const takerOutputAta = spl.getAssociatedTokenAddressSync(
+                outputMint,
+                taker.publicKey
+            );
+            const { vault: inputVaultAta } = await limoHelper.getVault(inputMint);
+            const { vault: outputVaultAta } = await limoHelper.getVault(outputMint);
+
+            const makerInputAtaBalanceBefore = await provider.connection.getTokenAccountBalance(makerInputAta);
+            const takerInputAtaBalanceBefore = await provider.connection.getTokenAccountBalance(takerInputAta);
+            const makerOutputAtaBalanceBefore = await provider.connection.getTokenAccountBalance(makerOutputAta);
+            const takerOutputAtaBalanceBefore = await provider.connection.getTokenAccountBalance(takerOutputAta);
+            const inputVaultAtaBalanceBefore = await provider.connection.getTokenAccountBalance(inputVaultAta);
+            const outputVaultAtaBalanceBefore = await provider.connection.getTokenAccountBalance(outputVaultAta);
+
+            const { signatures: tpSignatures } = await limoHelper.takeOrder({
+                taker: takerWallet,
+                order: tpOrder,
+                inputAmount: fillInputAmount,
+                minOutputAmount: fillMinOutputAmount,
+                tipAmountPermissionlessTaking: new BN(0),
+            });
+
+            const makerInputAtaBalanceAfter = await provider.connection.getTokenAccountBalance(makerInputAta);
+            const takerInputAtaBalanceAfter = await provider.connection.getTokenAccountBalance(takerInputAta);
+            const makerOutputAtaBalanceAfter = await provider.connection.getTokenAccountBalance(makerOutputAta);
+            const takerOutputAtaBalanceAfter = await provider.connection.getTokenAccountBalance(takerOutputAta);
+            const inputVaultAtaBalanceAfter = await provider.connection.getTokenAccountBalance(inputVaultAta);
+            const outputVaultAtaBalanceAfter = await provider.connection.getTokenAccountBalance(outputVaultAta);
+
+            const tx = await provider.connection.getParsedTransaction(tpSignatures[0], { commitment: "confirmed", maxSupportedTransactionVersion: 0 });
+
+            const expectedKeeperFee = fillMinOutputAmount.mul(keeperFeeBps).div(new BN(10000));
+
+            const orderAccount = await limoHelper.getOrderAccount(order);
+            const tpOrderAccount = await limoHelper.getOrderAccount(tpOrder);
+            const slOrderAccount = await limoHelper.getOrderAccount(slOrder);
+
+            expect(orderAccount.availableChildInputAmount.toString()).to.equal(new BN(0).toString());
+            expect(orderAccount.status).to.equal(OrderStatus.Filled);
+
+            expect(tpOrderAccount.remainingInputAmount.toString()).to.equal(orderOutputAmount.sub(fillInputAmount).toString());
+            expect(tpOrderAccount.filledOutputAmount.toString()).to.equal(fillMinOutputAmount.toString());
+            expect(tpOrderAccount.expectedOutputAmount.toString()).to.equal(tpOutputAmount.toString());
+            expect(tpOrderAccount.initialInputAmount.toString()).to.equal(orderOutputAmount.toString());
+            expect(tpOrderAccount.numberOfFills.toString()).to.equal(new BN(1).toString());
+            // expect(tpOrderAccount.lastUpdatedTimestamp.toString()).to.equal((tx?.blockTime ?? 0).toString());
+            expect(tpOrderAccount.status).to.equal(OrderStatus.Filled);
+            expect(tpOrderAccount.availableChildInputAmount.toString()).to.equal(new BN(0).toString());
+
+            expect(slOrderAccount.remainingInputAmount.toString()).to.equal(orderOutputAmount.toString());
+            expect(slOrderAccount.filledOutputAmount.toString()).to.equal(new BN(0).toString());
+            expect(slOrderAccount.expectedOutputAmount.toString()).to.equal(slOutputAmount.toString());
+            expect(slOrderAccount.initialInputAmount.toString()).to.equal(orderOutputAmount.toString());
+            expect(slOrderAccount.numberOfFills.toString()).to.equal(new BN(0).toString());
+            // expect(slOrderAccount.lastUpdatedTimestamp.toString()).to.not.equal((tx?.blockTime ?? 0).toString());
+            expect(slOrderAccount.status).to.equal(OrderStatus.Filled);
+            expect(slOrderAccount.availableChildInputAmount.toString()).to.equal(new BN(0).toString());
+
+            expect(makerInputAtaBalanceAfter.value.amount).to.equal(new BN(makerInputAtaBalanceBefore.value.amount).add(fillMinOutputAmount).sub(expectedKeeperFee).toString());
+            const expectedTakerInputAtaBalanceAfter = new BN(takerInputAtaBalanceBefore.value.amount).sub(fillMinOutputAmount).add(expectedKeeperFee).toString();
+            expect(takerInputAtaBalanceAfter.value.amount).to.equal(expectedTakerInputAtaBalanceAfter);
+            expect(makerOutputAtaBalanceAfter.value.amount).to.equal(makerOutputAtaBalanceBefore.value.amount);
+            const expectedTakerOutputAtaBalanceAfter = new BN(takerOutputAtaBalanceBefore.value.amount).add(fillInputAmount).toString();
+            expect(takerOutputAtaBalanceAfter.value.amount).to.equal(expectedTakerOutputAtaBalanceAfter);
+            expect(inputVaultAtaBalanceAfter.value.amount).to.equal(inputVaultAtaBalanceBefore.value.amount);
+            const expectedOutputVaultAtaBalanceAfter = new BN(outputVaultAtaBalanceBefore.value.amount).sub(fillInputAmount).toString();
+            expect(outputVaultAtaBalanceAfter.value.amount).to.equal(expectedOutputVaultAtaBalanceAfter);
+
+            await limoHelper.updateGlobalConfig({
+                payer: payerWallet,
+                mode: UpdateGlobalConfigMode.UpdateKeeperTakeFeeBps,
+                value: Array.from(new BN(0).toArray("le", 2)),
+            });
+        });
     });
 
     describe("Execute SL child fills with oracle validation", () => {
@@ -589,6 +699,7 @@ describe("Type B Child Limit Orders", () => {
         const orderOutputAmount = new BN(100000000000);
         const tpOutputAmount = new BN(120000000000);
         const slOutputAmount = new BN(90000000000);
+        const activeDurationSeconds = new BN(10);
 
         async function calcMinOutputAmount(inputAmount: BN, order: web3.PublicKey): Promise<BN> {
             const orderAccount = await limoHelper.getOrderAccount(order);
@@ -623,6 +734,7 @@ describe("Type B Child Limit Orders", () => {
                 orderType: OrderType.LimitParent,
                 tpOutputAmount: tpOutputAmount,
                 slOutputAmount: slOutputAmount,
+                activeDurationSeconds: activeDurationSeconds,
             });
             order = orderPubkey;
             tpOrder = tpOrderPubkey;
@@ -839,6 +951,147 @@ describe("Type B Child Limit Orders", () => {
 
         // We cannot test this because we cannot change the data in Oracle.
         it("SL with stale oracle rejected", async () => {});
+
+        it("Should reject fill order when order is expired", async () => {
+            await limoHelper.updateGlobalConfig({
+                payer: payerWallet,
+                mode: UpdateGlobalConfigMode.UpdateAllowedTaker,
+                value: Array.from(taker.publicKey.toBuffer()),
+            });
+
+            const waitMs = (activeDurationSeconds.toNumber() + 1) * 1000;
+            await new Promise(resolve => setTimeout(resolve, waitMs));
+
+            const fillInputAmount = orderOutputAmount;
+            const fillMinOutputAmount = await calcMinOutputAmount(fillInputAmount, slOrder);
+
+            await expectRejects(
+                limoHelper.takeOrder({
+                    taker: takerWallet,
+                    order: slOrder,
+                    inputAmount: fillInputAmount,
+                    minOutputAmount: fillMinOutputAmount,
+                    tipAmountPermissionlessTaking: new BN(0),
+                }),
+                LimoError.OrderExpired,
+            );
+        });
+
+        it("Should get keeper fee", async () => {
+            const keeperFeeBps = new BN(1000);
+            await limoHelper.updateGlobalConfig({
+                payer: payerWallet,
+                mode: UpdateGlobalConfigMode.UpdateKeeperTakeFeeBps,
+                value: Array.from(keeperFeeBps.toArray("le", 2)),
+            });
+
+            await limoHelper.takeOrder({
+                taker: takerWallet,
+                order: order,
+                inputAmount: orderInputAmount,
+                minOutputAmount: await calcMinOutputAmount(orderInputAmount, order),
+                tipAmountPermissionlessTaking: new BN(0),
+            });
+
+            const fillInputAmount = orderOutputAmount;
+            const fillMinOutputAmount = await calcMinOutputAmount(fillInputAmount, slOrder);
+
+            // It is impossible to change the price in Oracle,
+            // so for the test we will change SlMaxUpwardDeviationBps
+            // to allow the SL order to execute.
+            // value = 1000 means 10% deviation
+            await limoHelper.updateGlobalConfig({
+                payer: payerWallet,
+                mode: UpdateGlobalConfigMode.UpdateSlMaxUpwardDeviationBps,
+                value: [232, 3],
+            });
+
+            const makerInputAta = spl.getAssociatedTokenAddressSync(
+                inputMint,
+                maker.publicKey
+            );
+            const makerOutputAta = spl.getAssociatedTokenAddressSync(
+                outputMint,
+                maker.publicKey
+            );
+            const takerInputAta = spl.getAssociatedTokenAddressSync(
+                inputMint,
+                taker.publicKey
+            );
+            const takerOutputAta = spl.getAssociatedTokenAddressSync(
+                outputMint,
+                taker.publicKey
+            );
+            const { vault: inputVaultAta } = await limoHelper.getVault(inputMint);
+            const { vault: outputVaultAta } = await limoHelper.getVault(outputMint);
+
+            const makerInputAtaBalanceBefore = await provider.connection.getTokenAccountBalance(makerInputAta);
+            const takerInputAtaBalanceBefore = await provider.connection.getTokenAccountBalance(takerInputAta);
+            const makerOutputAtaBalanceBefore = await provider.connection.getTokenAccountBalance(makerOutputAta);
+            const takerOutputAtaBalanceBefore = await provider.connection.getTokenAccountBalance(takerOutputAta);
+            const inputVaultAtaBalanceBefore = await provider.connection.getTokenAccountBalance(inputVaultAta);
+            const outputVaultAtaBalanceBefore = await provider.connection.getTokenAccountBalance(outputVaultAta);
+
+            const { signatures: tpSignatures } = await limoHelper.takeOrder({
+                taker: takerWallet,
+                order: slOrder,
+                inputAmount: fillInputAmount,
+                minOutputAmount: fillMinOutputAmount,
+                tipAmountPermissionlessTaking: new BN(0),
+            });
+
+            const makerInputAtaBalanceAfter = await provider.connection.getTokenAccountBalance(makerInputAta);
+            const takerInputAtaBalanceAfter = await provider.connection.getTokenAccountBalance(takerInputAta);
+            const makerOutputAtaBalanceAfter = await provider.connection.getTokenAccountBalance(makerOutputAta);
+            const takerOutputAtaBalanceAfter = await provider.connection.getTokenAccountBalance(takerOutputAta);
+            const inputVaultAtaBalanceAfter = await provider.connection.getTokenAccountBalance(inputVaultAta);
+            const outputVaultAtaBalanceAfter = await provider.connection.getTokenAccountBalance(outputVaultAta);
+
+            const tx = await provider.connection.getParsedTransaction(tpSignatures[0], { commitment: "confirmed", maxSupportedTransactionVersion: 0 });
+
+            const expectedKeeperFee = fillMinOutputAmount.mul(keeperFeeBps).div(new BN(10000));
+
+            const orderAccount = await limoHelper.getOrderAccount(order);
+            const tpOrderAccount = await limoHelper.getOrderAccount(tpOrder);
+            const slOrderAccount = await limoHelper.getOrderAccount(slOrder);
+
+            expect(orderAccount.availableChildInputAmount.toString()).to.equal(new BN(0).toString());
+            expect(orderAccount.status).to.equal(OrderStatus.Filled);
+
+            expect(slOrderAccount.remainingInputAmount.toString()).to.equal(orderOutputAmount.sub(fillInputAmount).toString());
+            expect(slOrderAccount.filledOutputAmount.toString()).to.equal(fillMinOutputAmount.toString());
+            expect(slOrderAccount.expectedOutputAmount.toString()).to.equal(slOutputAmount.toString());
+            expect(slOrderAccount.initialInputAmount.toString()).to.equal(orderOutputAmount.toString());
+            expect(slOrderAccount.numberOfFills.toString()).to.equal(new BN(1).toString());
+            // expect(slOrderAccount.lastUpdatedTimestamp.toString()).to.equal((tx?.blockTime ?? 0).toString());
+            expect(slOrderAccount.status).to.equal(OrderStatus.Filled);
+            expect(slOrderAccount.availableChildInputAmount.toString()).to.equal(new BN(0).toString());
+
+            expect(tpOrderAccount.remainingInputAmount.toString()).to.equal(orderOutputAmount.toString());
+            expect(tpOrderAccount.filledOutputAmount.toString()).to.equal(new BN(0).toString());
+            expect(tpOrderAccount.expectedOutputAmount.toString()).to.equal(tpOutputAmount.toString());
+            expect(tpOrderAccount.initialInputAmount.toString()).to.equal(orderOutputAmount.toString());
+            expect(tpOrderAccount.numberOfFills.toString()).to.equal(new BN(0).toString());
+            // expect(tpOrderAccount.lastUpdatedTimestamp.toString()).to.not.equal((tx?.blockTime ?? 0).toString());
+            expect(tpOrderAccount.status).to.equal(OrderStatus.Filled);
+            expect(tpOrderAccount.availableChildInputAmount.toString()).to.equal(new BN(0).toString());
+
+            expect(makerInputAtaBalanceAfter.value.amount).to.equal(new BN(makerInputAtaBalanceBefore.value.amount).add(fillMinOutputAmount).sub(expectedKeeperFee).toString());
+            const expectedTakerInputAtaBalanceAfter = new BN(takerInputAtaBalanceBefore.value.amount).sub(fillMinOutputAmount).add(expectedKeeperFee).toString();
+            expect(takerInputAtaBalanceAfter.value.amount).to.equal(expectedTakerInputAtaBalanceAfter);
+            expect(makerOutputAtaBalanceAfter.value.amount).to.equal(makerOutputAtaBalanceBefore.value.amount);
+            const expectedTakerOutputAtaBalanceAfter = new BN(takerOutputAtaBalanceBefore.value.amount).add(fillInputAmount).toString();
+            expect(takerOutputAtaBalanceAfter.value.amount).to.equal(expectedTakerOutputAtaBalanceAfter);
+            expect(inputVaultAtaBalanceAfter.value.amount).to.equal(inputVaultAtaBalanceBefore.value.amount);
+            const expectedOutputVaultAtaBalanceAfter = new BN(outputVaultAtaBalanceBefore.value.amount).sub(fillInputAmount).toString();
+            expect(outputVaultAtaBalanceAfter.value.amount).to.equal(expectedOutputVaultAtaBalanceAfter);
+
+            await limoHelper.updateGlobalConfig({
+                payer: payerWallet,
+                mode: UpdateGlobalConfigMode.UpdateKeeperTakeFeeBps,
+                value: Array.from(new BN(0).toArray("le", 2)),
+            });
+        });
     });
 
     describe("Aggregate realized input from TP/SL", () => {

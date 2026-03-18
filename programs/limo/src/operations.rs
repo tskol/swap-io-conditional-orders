@@ -79,7 +79,9 @@ pub fn create_order(
     order_type: u8,
     in_vault_bump: u8,
     current_timestamp: i64,
+    active_duration_seconds: u64,
 ) -> Result<()> {
+    let timestamp = current_timestamp.try_into().expect("Negative timestamp");
     order.global_config = global_config;
     order.initial_input_amount = input_amount;
     order.remaining_input_amount = input_amount;
@@ -98,10 +100,10 @@ pub fn create_order(
     order.status = OrderStatus::Active as u8;
     order.order_type = order_type;
     order.in_vault_bump = in_vault_bump;
-    order.last_updated_timestamp = current_timestamp.try_into().expect("Negative timestamp");
+    order.last_updated_timestamp = timestamp;
     order.counterparty = Pubkey::default();
     order.permissionless = 0;
-
+    order.expiry_timestamp = if active_duration_seconds == 0 { 0 } else { timestamp + active_duration_seconds };
     Ok(())
 }
 
@@ -286,16 +288,22 @@ pub fn take_order_calcs(
 
     let mut output_to_send_to_protocol = 0;
     let mut output_keeper_fee = 0;
-    if fee_pot > 0 {
-        if order.order_type == OrderType::LimitParent as u8 {
-            output_to_send_to_protocol = (Fraction::from_bps(global_config.parent_fill_fee_protocol_bps) * Fraction::from(fee_pot))
-                .to_ceil::<u64>();
-            output_keeper_fee = (Fraction::from_bps(global_config.parent_fill_fee_keeper_bps) * Fraction::from(fee_pot))
-                .to_ceil::<u64>();
-        } else if order.order_type == OrderType::LimitTP as u8 || order.order_type == OrderType::LimitSL as u8 {
+    let mut output_fee_pot_keeper_fee = 0;
+    if order.order_type == OrderType::Vanilla as u8 {
+        output_keeper_fee = (Fraction::from_bps(global_config.keeper_take_fee_bps) * Fraction::from(output_amount))
+            .to_ceil::<u64>();
+    } else if order.order_type == OrderType::LimitParent as u8 && fee_pot > 0 {
+        output_to_send_to_protocol = (Fraction::from_bps(global_config.parent_fill_fee_protocol_bps) * Fraction::from(fee_pot))
+            .to_ceil::<u64>();
+        output_fee_pot_keeper_fee = (Fraction::from_bps(global_config.parent_fill_fee_keeper_bps) * Fraction::from(fee_pot))
+            .to_ceil::<u64>();
+    } else if order.order_type == OrderType::LimitTP as u8 || order.order_type == OrderType::LimitSL as u8 {
+        output_keeper_fee = (Fraction::from_bps(global_config.keeper_take_fee_bps) * Fraction::from(output_amount))
+            .to_ceil::<u64>();
+        if fee_pot > 0 {
             output_to_send_to_protocol = (Fraction::from_bps(global_config.tp_sl_child_fee_protocol_bps) * Fraction::from(fee_pot))
                 .to_ceil::<u64>();
-            output_keeper_fee = (Fraction::from_bps(global_config.tp_sl_child_fee_keeper_bps) * Fraction::from(fee_pot))
+            output_fee_pot_keeper_fee += (Fraction::from_bps(global_config.tp_sl_child_fee_keeper_bps) * Fraction::from(fee_pot))
                 .to_ceil::<u64>();
         }
     }
@@ -304,7 +312,7 @@ pub fn take_order_calcs(
         .checked_sub(output_to_send_to_protocol)
         .ok_or(LimoError::MathOverflow)
         .unwrap()
-        .checked_sub(output_keeper_fee)
+        .checked_sub(output_fee_pot_keeper_fee)
         .ok_or(LimoError::MathOverflow)
         .unwrap();
 
@@ -320,11 +328,13 @@ pub fn take_order_calcs(
     msg!("input_to_send_to_taker: {}", input_to_send_to_taker);
     msg!("output_to_send_to_maker: {}", output_to_send_to_maker);
     msg!("output_to_send_to_protocol: {}", output_to_send_to_protocol);
+    msg!("output_keeper_fee: {}", output_keeper_fee);
 
     Ok(TakeOrderEffects {
         input_to_send_to_taker,
         output_to_send_to_maker,
         output_to_send_to_protocol,
+        output_keeper_fee,
     })
 }
 
@@ -353,6 +363,7 @@ pub fn take_order(
         input_to_send_to_taker,
         output_to_send_to_maker,
         output_to_send_to_protocol,
+        output_keeper_fee,
     } = take_order_calcs(order, global_config, input_amount, output_amount)?;
 
     let is_child_order = order.parent_order != Pubkey::default();
@@ -391,6 +402,7 @@ pub fn take_order(
         input_to_send_to_taker,
         output_to_send_to_maker,
         output_to_send_to_protocol,
+        output_keeper_fee,
     })
 }
 
@@ -416,7 +428,9 @@ pub fn update_global_config(
         | UpdateGlobalConfigMode::UpdateParentFillFeeKeeperBps
         | UpdateGlobalConfigMode::UpdateParentFillFeeProtocolBps
         | UpdateGlobalConfigMode::UpdateTpSlChildFeeKeeperBps
-        | UpdateGlobalConfigMode::UpdateTpSlChildFeeProtocolBps => {
+        | UpdateGlobalConfigMode::UpdateTpSlChildFeeProtocolBps
+        | UpdateGlobalConfigMode::UpdateKeeperTakeFeeBps
+        | UpdateGlobalConfigMode::UpdateKeeperCloseFeeBps => {
             let value = u16::from_le_bytes(value[0..2].try_into().unwrap());
             update_global_config_bps(global_config, mode, value, ts)?;
         }
@@ -723,6 +737,14 @@ fn update_global_config_bps(
         UpdateGlobalConfigMode::UpdateTpSlChildFeeProtocolBps => {
             msg!("new={} prev={}", value, global_config.tp_sl_child_fee_protocol_bps);
             global_config.tp_sl_child_fee_protocol_bps = value;
+        }
+        UpdateGlobalConfigMode::UpdateKeeperTakeFeeBps => {
+            msg!("new={} prev={}", value, global_config.keeper_take_fee_bps);
+            global_config.keeper_take_fee_bps = value;
+        }
+        UpdateGlobalConfigMode::UpdateKeeperCloseFeeBps => {
+            msg!("new={} prev={}", value, global_config.keeper_close_fee_bps);
+            global_config.keeper_close_fee_bps = value;
         }
         _ => return Err(LimoError::InvalidConfigOption.into()),
     }

@@ -53,6 +53,8 @@ export const UpdateGlobalConfigMode = {
     UpdateSlMaxUpwardDeviationBps: 16,
     UpdateTpSlMinDistanceBps: 17,
     UpdateAllowedTaker: 18,
+    UpdateKeeperTakeFeeBps: 19,
+    UpdateKeeperCloseFeeBps: 20,
 }
 
 export const LimoError = {
@@ -113,4 +115,5 @@ export const LimoError = {
     SwapInputInvalidBalanceChange: "The swap input balance change is positive, expected negative",
     SwapOutputInvalidBalanceChange: "The swap output balance change is negative, expected positive",
     OrderParametersInvalid: "The order parameters are invalid",
+    OrderExpired: "Order expired",
 }
