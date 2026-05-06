@@ -27,3 +27,11 @@ fn update_order_sets_counterparty_pubkey() {
 
     assert_eq!(order.counterparty, counterparty);
 }
+
+#[test]
+fn update_order_rejects_invalid_value_lengths() {
+    let mut order = Order::default();
+
+    assert!(update_order(&mut order, UpdateOrderMode::UpdatePermissionless, &[]).is_ok());
+    assert!(update_order(&mut order, UpdateOrderMode::UpdateCounterparty, &[7; 31]).is_ok());
+}
