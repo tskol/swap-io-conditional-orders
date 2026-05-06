@@ -359,3 +359,28 @@ pub mod ix_utils {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn token_2022_verify_ix_and_mints_rejects_missing_mint_account() {
+        let instruction = Instruction {
+            program_id: token_2022::ID,
+            accounts: vec![],
+            data: TokenInstruction::TransferChecked {
+                amount: 1,
+                decimals: 6,
+            }
+            .pack(),
+        };
+
+        assert!(token_2022_verify_ix_and_mints(
+            &instruction,
+            &Pubkey::new_unique(),
+            &Pubkey::new_unique(),
+        )
+        .is_err());
+    }
+}
