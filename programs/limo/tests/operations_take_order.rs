@@ -40,6 +40,12 @@ fn empty_global_config() -> GlobalConfig {
     }
 }
 
+fn global_config_with_keeper_fee(keeper_take_fee_bps: u16) -> GlobalConfig {
+    let mut global_config = empty_global_config();
+    global_config.keeper_take_fee_bps = keeper_take_fee_bps;
+    global_config
+}
+
 fn active_vanilla_order() -> Order {
     let mut order = Order::default();
 
@@ -64,11 +70,16 @@ fn active_vanilla_order() -> Order {
     order
 }
 
+fn assert_take_order_rejected(order: &Order, input_amount: u64, output_amount: u64) {
+    let global_config = empty_global_config();
+
+    assert!(take_order_calcs(order, &global_config, input_amount, output_amount).is_err());
+}
+
 #[test]
 fn take_order_calcs_partial_vanilla_fill_with_keeper_fee() {
     let order = active_vanilla_order();
-    let mut global_config = empty_global_config();
-    global_config.keeper_take_fee_bps = 100;
+    let global_config = global_config_with_keeper_fee(100);
 
     let effects = take_order_calcs(&order, &global_config, 500, 1_000).unwrap();
 
@@ -82,8 +93,7 @@ fn take_order_calcs_partial_vanilla_fill_with_keeper_fee() {
 #[test]
 fn take_order_calcs_rejects_zero_or_oversized_input() {
     let order = active_vanilla_order();
-    let global_config = empty_global_config();
 
-    assert!(take_order_calcs(&order, &global_config, 0, 0).is_err());
-    assert!(take_order_calcs(&order, &global_config, 1_001, 2_002).is_err());
+    assert_take_order_rejected(&order, 0, 0);
+    assert_take_order_rejected(&order, 1_001, 2_002);
 }
