@@ -75,6 +75,6 @@ fn take_order_calcs_partial_vanilla_fill_with_keeper_fee() {
     assert_eq!(effects.input_to_send_to_taker, 500);
     assert_eq!(effects.output_to_send_to_maker, 1_000);
     assert_eq!(effects.output_to_send_to_protocol, 0);
-    assert_eq!(effects.output_keeper_fee, 0);
+    assert_eq!(effects.output_keeper_fee, 10);
     assert_eq!(order.status, OrderStatus::Active as u8);
 }
