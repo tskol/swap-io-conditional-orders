@@ -97,3 +97,15 @@ fn create_order_rejects_negative_current_timestamp() {
     assert_eq!(order.status, 0);
     assert_eq!(order.last_updated_timestamp, 0);
 }
+
+#[test]
+fn create_order_rejects_when_expiry_timestamp_overflows() {
+    let mut order = Order::default();
+    let fixture = VanillaOrderFixture::new();
+
+    assert!(fixture
+        .try_create_order(&mut order, i64::MAX, u64::MAX)
+        .is_err());
+    assert_eq!(order.status, 0);
+    assert_eq!(order.expiry_timestamp, 0);
+}
