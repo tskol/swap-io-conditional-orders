@@ -482,8 +482,12 @@ pub fn validate_pda_authority_balance_and_update_accounting(
     pda_authority_balance: u64,
     tip: u64,
 ) -> Result<()> {
+    let tip_transfer_amount = pda_authority_balance
+        .checked_sub(global_config.pda_authority_previous_lamports_balance)
+        .ok_or_else(|| dbg_msg!(LimoError::InvalidTipTransferAmount))?;
+
     require_gte!(
-        pda_authority_balance - global_config.pda_authority_previous_lamports_balance,
+        tip_transfer_amount,
         tip,
         LimoError::InvalidTipTransferAmount
     );
