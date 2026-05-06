@@ -47,7 +47,7 @@ fn initialize_global_config_sets_authorities_and_defaults() {
 
     assert_eq!(global_config.admin_authority, admin);
     assert_eq!(global_config.admin_authority_cached, admin);
-    assert_eq!(global_config.pda_authority, Pubkey::default());
+    assert_eq!(global_config.pda_authority, pda_authority);
     assert_eq!(global_config.pda_authority_bump, 255);
     assert_eq!(global_config.pda_authority_previous_lamports_balance, 42);
     assert_eq!(global_config.tp_sl_enabled, 1);
