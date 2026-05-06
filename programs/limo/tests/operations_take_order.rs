@@ -74,6 +74,7 @@ fn assert_take_order_rejected(order: &Order, input_amount: u64, output_amount: u
     let global_config = empty_global_config();
 
     assert!(take_order_calcs(order, &global_config, input_amount, output_amount).is_err());
+    assert_eq!(order.status, OrderStatus::Active as u8);
 }
 
 #[test]
@@ -105,5 +106,4 @@ fn take_order_calcs_rejects_order_with_zero_initial_input_amount() {
     order.remaining_input_amount = 1;
 
     assert_take_order_rejected(&order, 1, 1);
-    assert_eq!(order.status, OrderStatus::Active as u8);
 }
