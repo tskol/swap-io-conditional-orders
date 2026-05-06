@@ -55,6 +55,24 @@ impl VanillaOrderFixture {
     }
 }
 
+fn assert_create_order_rejected(
+    fixture: &VanillaOrderFixture,
+    order: &mut Order,
+    current_timestamp: i64,
+    active_duration_seconds: u64,
+    expected_last_updated_timestamp: u64,
+) {
+    assert!(fixture
+        .try_create_order(order, current_timestamp, active_duration_seconds)
+        .is_err());
+    assert_eq!(order.status, 0);
+    assert_eq!(
+        order.last_updated_timestamp,
+        expected_last_updated_timestamp
+    );
+    assert_eq!(order.expiry_timestamp, 0);
+}
+
 #[test]
 fn create_order_initializes_vanilla_order_fields() {
     let mut order = Order::default();
@@ -93,9 +111,7 @@ fn create_order_rejects_negative_current_timestamp() {
     let mut order = Order::default();
     let fixture = VanillaOrderFixture::new();
 
-    assert!(fixture.try_create_order(&mut order, -1, 0).is_err());
-    assert_eq!(order.status, 0);
-    assert_eq!(order.last_updated_timestamp, 0);
+    assert_create_order_rejected(&fixture, &mut order, -1, 0, 0);
 }
 
 #[test]
@@ -103,9 +119,5 @@ fn create_order_rejects_when_expiry_timestamp_overflows() {
     let mut order = Order::default();
     let fixture = VanillaOrderFixture::new();
 
-    assert!(fixture
-        .try_create_order(&mut order, i64::MAX, u64::MAX)
-        .is_err());
-    assert_eq!(order.status, 0);
-    assert_eq!(order.expiry_timestamp, 0);
+    assert_create_order_rejected(&fixture, &mut order, i64::MAX, u64::MAX, i64::MAX as u64);
 }
