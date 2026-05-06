@@ -74,6 +74,6 @@ fn close_order_cancels_active_order_and_claims_tip() {
 
     close_order_and_claim_tip(&mut order, &mut global_config, 105).unwrap();
 
-    assert_eq!(order.status, OrderStatus::Active as u8);
+    assert_eq!(order.status, OrderStatus::Cancelled as u8);
     assert_eq!(global_config.total_tip_amount, 40);
 }
