@@ -160,3 +160,54 @@ fn search_start_ix(
 
     Ok(start_ix)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use anchor_lang::solana_program::{instruction::AccountMeta, program_error::ProgramError};
+
+    struct FakeInstructionLoader {
+        instructions: Vec<Instruction>,
+        current_index: u16,
+    }
+
+    impl ix_utils::InstructionLoader for FakeInstructionLoader {
+        fn load_instruction_at(
+            &self,
+            index: usize,
+        ) -> std::result::Result<Instruction, ProgramError> {
+            self.instructions
+                .get(index)
+                .cloned()
+                .ok_or(ProgramError::InvalidArgument)
+        }
+
+        fn load_current_index(&self) -> std::result::Result<u16, ProgramError> {
+            Ok(self.current_index)
+        }
+    }
+
+    fn instruction(program_id: Pubkey) -> Instruction {
+        Instruction {
+            program_id,
+            accounts: vec![AccountMeta::new_readonly(Pubkey::new_unique(), false)],
+            data: vec![1; 8],
+        }
+    }
+
+    #[test]
+    fn search_start_ix_rejects_unexpected_instruction_between_start_and_end() {
+        let swap_program_id = Pubkey::new_unique();
+        let loader = FakeInstructionLoader {
+            instructions: vec![
+                instruction(crate::id()),
+                instruction(Pubkey::new_unique()),
+                instruction(swap_program_id),
+                instruction(crate::id()),
+            ],
+            current_index: 3,
+        };
+
+        assert!(search_start_ix(3, &loader, &swap_program_id).is_err());
+    }
+}
