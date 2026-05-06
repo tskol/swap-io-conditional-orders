@@ -1,5 +1,8 @@
 use anchor_lang::prelude::Pubkey;
-use limo::{operations::initialize_global_config, state::GlobalConfig};
+use limo::{
+    operations::{initialize_global_config, initialize_oracle_pool},
+    state::{GlobalConfig, OraclePoolsState},
+};
 
 fn empty_global_config() -> GlobalConfig {
     GlobalConfig {
@@ -52,4 +55,27 @@ fn initialize_global_config_sets_authorities_and_defaults() {
     assert_eq!(global_config.pda_authority_previous_lamports_balance, 42);
     assert_eq!(global_config.tp_sl_enabled, 1);
     assert_eq!(global_config.oracle_max_staleness_seconds, 30);
+}
+
+#[test]
+fn initialize_oracle_pool_sets_feed_and_mint() {
+    let mut oracle_pool = OraclePoolsState {
+        global_config: Pubkey::default(),
+        oracle_feed_id: [0; 32],
+        token_mint: Pubkey::default(),
+    };
+    let global_config = Pubkey::new_unique();
+    let token_mint = Pubkey::new_unique();
+
+    initialize_oracle_pool(
+        &mut oracle_pool,
+        global_config,
+        "0101010101010101010101010101010101010101010101010101010101010101".to_string(),
+        token_mint,
+    )
+    .unwrap();
+
+    assert_eq!(oracle_pool.global_config, global_config);
+    assert_eq!(oracle_pool.token_mint, token_mint);
+    assert_eq!(oracle_pool.oracle_feed_id, [0; 32]);
 }
