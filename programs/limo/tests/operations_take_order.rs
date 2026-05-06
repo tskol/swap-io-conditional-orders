@@ -97,3 +97,13 @@ fn take_order_calcs_rejects_zero_or_oversized_input() {
     assert_take_order_rejected(&order, 0, 0);
     assert_take_order_rejected(&order, 1_001, 2_002);
 }
+
+#[test]
+fn take_order_calcs_rejects_order_with_zero_initial_input_amount() {
+    let mut order = active_vanilla_order();
+    order.initial_input_amount = 0;
+    order.remaining_input_amount = 1;
+
+    assert_take_order_rejected(&order, 1, 1);
+    assert_eq!(order.status, OrderStatus::Active as u8);
+}
