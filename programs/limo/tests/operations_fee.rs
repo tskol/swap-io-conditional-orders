@@ -8,6 +8,6 @@ fn fee_amount_rounds_fractional_bps_up_to_one_unit() {
 }
 #[test]
 fn fee_amount_handles_zero_and_full_bps() {
-    assert_eq!(calculate_fee_amount(123_456, 0).unwrap(), 1);
+    assert_eq!(calculate_fee_amount(123_456, 0).unwrap(), 0);
     assert_eq!(calculate_fee_amount(123_456, 10_000).unwrap(), 123_456);
 }
