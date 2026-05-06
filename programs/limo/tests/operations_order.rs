@@ -46,3 +46,29 @@ fn create_order_initializes_vanilla_order_fields() {
     assert_eq!(order.filled_output_amount, 0);
     assert_eq!(order.expiry_timestamp, 0);
 }
+
+#[test]
+fn create_order_sets_expiry_when_active_duration_is_nonzero() {
+    let mut order = Order::default();
+
+    create_order(
+        &mut order,
+        Pubkey::new_unique(),
+        Pubkey::new_unique(),
+        1_000,
+        2_000,
+        Pubkey::default(),
+        Pubkey::new_unique(),
+        Pubkey::new_unique(),
+        Pubkey::new_unique(),
+        Pubkey::new_unique(),
+        OrderType::Vanilla as u8,
+        254,
+        100,
+        50,
+    )
+    .unwrap();
+
+    assert_eq!(order.last_updated_timestamp, 100);
+    assert_eq!(order.expiry_timestamp, 0);
+}
