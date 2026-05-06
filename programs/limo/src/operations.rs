@@ -283,6 +283,11 @@ pub fn take_order_calcs(
         LimoError::OrderInputAmountTooLarge
     );
 
+    require!(
+        order.initial_input_amount > 0,
+        LimoError::OrderInputAmountInvalid
+    );
+
     let input_to_send_to_taker = input_amount;
     let numerator = u128::from(input_to_send_to_taker) * u128::from(order.expected_output_amount);
     let denominator = u128::from(order.initial_input_amount);
