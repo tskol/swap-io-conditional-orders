@@ -95,5 +95,8 @@ fn initialize_oracle_pool_rejects_invalid_feed_id() {
         Pubkey::new_unique(),
     );
 
-    assert!(result.is_ok());
+    assert!(result.is_err());
+    assert_eq!(oracle_pool.global_config, Pubkey::default());
+    assert_eq!(oracle_pool.oracle_feed_id, [0; 32]);
+    assert_eq!(oracle_pool.token_mint, Pubkey::default());
 }
