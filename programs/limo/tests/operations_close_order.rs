@@ -95,3 +95,13 @@ fn close_order_rejects_before_close_delay_passes() {
     assert_eq!(order.status, OrderStatus::Active as u8);
     assert_eq!(global_config.total_tip_amount, 50);
 }
+
+#[test]
+fn close_order_rejects_when_order_tip_exceeds_total_tip_accounting() {
+    let mut order = active_order_with_tip(10);
+    let mut global_config = global_config_with_tip_and_delay(5, 5);
+
+    assert!(close_order_and_claim_tip(&mut order, &mut global_config, 105).is_err());
+    assert_eq!(order.status, OrderStatus::Active as u8);
+    assert_eq!(global_config.total_tip_amount, 5);
+}
