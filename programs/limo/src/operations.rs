@@ -117,6 +117,7 @@ pub fn update_order(order: &mut Order, mode: UpdateOrderMode, value: &[u8]) -> R
     match mode {
         UpdateOrderMode::UpdatePermissionless => {
             require!(value.len() == 1, LimoError::InvalidParameterType);
+            require!(value[0] == 0 || value[0] == 1, LimoError::InvalidFlag);
             msg!("update_order mode={:?}", mode);
             msg!("new={} prev={}", value[0], order.permissionless);
             order.permissionless = value[0];
