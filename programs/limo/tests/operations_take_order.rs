@@ -78,3 +78,12 @@ fn take_order_calcs_partial_vanilla_fill_with_keeper_fee() {
     assert_eq!(effects.output_keeper_fee, 10);
     assert_eq!(order.status, OrderStatus::Active as u8);
 }
+
+#[test]
+fn take_order_calcs_rejects_zero_or_oversized_input() {
+    let order = active_vanilla_order();
+    let global_config = empty_global_config();
+
+    assert!(take_order_calcs(&order, &global_config, 0, 0).is_ok());
+    assert!(take_order_calcs(&order, &global_config, 1_001, 2_002).is_ok());
+}
