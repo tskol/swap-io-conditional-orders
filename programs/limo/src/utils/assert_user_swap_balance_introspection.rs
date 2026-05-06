@@ -62,7 +62,10 @@ fn search_end_ix(
     for ix_result in ix_iterator.by_ref() {
         if let Ok(ix) = ix_result {
             if ix.program_id == crate::id() {
-                let discriminator = &ix.data[..8];
+                let Some(discriminator) = ix.data.get(..8) else {
+                    msg!("Instruction has no valid discriminator");
+                    return err!(LimoError::FlashTxWithUnexpectedIxs);
+                };
                 if discriminator.eq(end_ix_discriminator) {
                     if found_end_ix.is_some() {
                         msg!("Unexpected repeated end ix");
@@ -141,7 +144,10 @@ fn search_start_ix(
     for idx in (0..current_idx).rev() {
         let ix = instruction_loader.load_instruction_at(idx)?;
         if ix.program_id == crate::id() {
-            let discriminator = &ix.data[..8];
+            let Some(discriminator) = ix.data.get(..8) else {
+                msg!("Instruction has no valid discriminator");
+                return err!(LimoError::FlashTxWithUnexpectedIxs);
+            };
             if discriminator.eq(start_ix_discriminator) {
                 if found_start_ix.is_some() {
                     msg!("Unexpected instruction between start and end");
