@@ -75,6 +75,12 @@ fn active_order_with_tip(tip_amount: u64) -> Order {
     order
 }
 
+fn active_order_with_tip_and_last_updated(tip_amount: u64, last_updated_timestamp: u64) -> Order {
+    let mut order = active_order_with_tip(tip_amount);
+    order.last_updated_timestamp = last_updated_timestamp;
+    order
+}
+
 fn assert_close_order_rejected(
     order: &mut Order,
     global_config: &mut GlobalConfig,
@@ -115,8 +121,7 @@ fn close_order_rejects_when_order_tip_exceeds_total_tip_accounting() {
 
 #[test]
 fn close_order_rejects_when_close_delay_timestamp_overflows() {
-    let mut order = active_order_with_tip(0);
-    order.last_updated_timestamp = u64::MAX;
+    let mut order = active_order_with_tip_and_last_updated(0, u64::MAX);
     let mut global_config = global_config_with_tip_and_delay(0, 1);
 
     assert_close_order_rejected(&mut order, &mut global_config, u64::MAX, 0);
