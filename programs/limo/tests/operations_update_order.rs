@@ -8,6 +8,8 @@ fn assert_update_order_rejected(mode: UpdateOrderMode, value: &[u8]) {
     let mut order = Order::default();
 
     assert!(update_order(&mut order, mode, value).is_err());
+    assert_eq!(order.permissionless, 0);
+    assert_eq!(order.counterparty, Pubkey::default());
 }
 
 #[test]
@@ -42,8 +44,5 @@ fn update_order_rejects_invalid_value_lengths() {
 
 #[test]
 fn update_order_rejects_invalid_permissionless_flag() {
-    let mut order = Order::default();
-
-    assert!(update_order(&mut order, UpdateOrderMode::UpdatePermissionless, &[2]).is_err());
-    assert_eq!(order.permissionless, 0);
+    assert_update_order_rejected(UpdateOrderMode::UpdatePermissionless, &[2]);
 }
