@@ -44,6 +44,30 @@ impl VanillaOrderFixture {
         )
         .unwrap();
     }
+
+    fn try_create_order(
+        &self,
+        order: &mut Order,
+        current_timestamp: i64,
+        active_duration_seconds: u64,
+    ) -> anchor_lang::Result<()> {
+        create_order(
+            order,
+            self.global_config,
+            self.maker,
+            1_000,
+            2_000,
+            Pubkey::default(),
+            self.input_mint,
+            self.output_mint,
+            self.input_program,
+            self.output_program,
+            OrderType::Vanilla as u8,
+            254,
+            current_timestamp,
+            active_duration_seconds,
+        )
+    }
 }
 
 #[test]
@@ -77,4 +101,14 @@ fn create_order_sets_expiry_when_active_duration_is_nonzero() {
 
     assert_eq!(order.last_updated_timestamp, 100);
     assert_eq!(order.expiry_timestamp, 150);
+}
+
+#[test]
+fn create_order_rejects_negative_current_timestamp() {
+    let mut order = Order::default();
+    let fixture = VanillaOrderFixture::new();
+
+    assert!(fixture.try_create_order(&mut order, -1, 0).is_err());
+    assert_eq!(order.status, 0);
+    assert_eq!(order.last_updated_timestamp, 0);
 }
