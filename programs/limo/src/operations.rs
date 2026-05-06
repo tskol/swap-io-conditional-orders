@@ -197,7 +197,10 @@ pub fn withdraw_host_tip(
         LimoError::InvalidHostTipBalance
     );
     let host_tip_amount = global_config.host_tip_amount;
-    global_config.total_tip_amount -= host_tip_amount;
+    global_config.total_tip_amount = global_config
+        .total_tip_amount
+        .checked_sub(host_tip_amount)
+        .ok_or_else(|| dbg_msg!(LimoError::MathOverflow))?;
     global_config.host_tip_amount = 0;
     Ok(host_tip_amount)
 }
