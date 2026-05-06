@@ -40,6 +40,16 @@ fn empty_global_config() -> GlobalConfig {
     }
 }
 
+fn global_config_with_tip_and_delay(
+    total_tip_amount: u64,
+    close_delay_seconds: u64,
+) -> GlobalConfig {
+    let mut global_config = empty_global_config();
+    global_config.total_tip_amount = total_tip_amount;
+    global_config.order_close_delay_seconds = close_delay_seconds;
+    global_config
+}
+
 fn active_order_with_tip(tip_amount: u64) -> Order {
     let mut order = Order::default();
 
@@ -68,9 +78,7 @@ fn active_order_with_tip(tip_amount: u64) -> Order {
 #[test]
 fn close_order_cancels_active_order_and_claims_tip() {
     let mut order = active_order_with_tip(10);
-    let mut global_config = empty_global_config();
-    global_config.total_tip_amount = 50;
-    global_config.order_close_delay_seconds = 5;
+    let mut global_config = global_config_with_tip_and_delay(50, 5);
 
     close_order_and_claim_tip(&mut order, &mut global_config, 105).unwrap();
 
@@ -81,9 +89,7 @@ fn close_order_cancels_active_order_and_claims_tip() {
 #[test]
 fn close_order_rejects_before_close_delay_passes() {
     let mut order = active_order_with_tip(10);
-    let mut global_config = empty_global_config();
-    global_config.total_tip_amount = 50;
-    global_config.order_close_delay_seconds = 6;
+    let mut global_config = global_config_with_tip_and_delay(50, 6);
 
     assert!(close_order_and_claim_tip(&mut order, &mut global_config, 105).is_err());
     assert_eq!(order.status, OrderStatus::Active as u8);
