@@ -70,5 +70,5 @@ fn create_order_sets_expiry_when_active_duration_is_nonzero() {
     .unwrap();
 
     assert_eq!(order.last_updated_timestamp, 100);
-    assert_eq!(order.expiry_timestamp, 0);
+    assert_eq!(order.expiry_timestamp, 150);
 }
