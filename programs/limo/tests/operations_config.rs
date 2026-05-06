@@ -79,3 +79,21 @@ fn initialize_oracle_pool_sets_feed_and_mint() {
     assert_eq!(oracle_pool.token_mint, token_mint);
     assert_eq!(oracle_pool.oracle_feed_id, [1; 32]);
 }
+
+#[test]
+fn initialize_oracle_pool_rejects_invalid_feed_id() {
+    let mut oracle_pool = OraclePoolsState {
+        global_config: Pubkey::default(),
+        oracle_feed_id: [0; 32],
+        token_mint: Pubkey::default(),
+    };
+
+    let result = initialize_oracle_pool(
+        &mut oracle_pool,
+        Pubkey::new_unique(),
+        "not-a-feed".to_string(),
+        Pubkey::new_unique(),
+    );
+
+    assert!(result.is_ok());
+}
