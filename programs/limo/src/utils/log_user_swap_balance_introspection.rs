@@ -145,7 +145,7 @@ fn search_start_ix(
                 return err!(LimoError::FlashTxWithUnexpectedIxs);
             }
             found_swap_ix = true;
-        } else if found_start_ix.is_some() {
+        } else {
             msg!("Unexpected instruction between start and end");
             return err!(LimoError::FlashTxWithUnexpectedIxs);
         }
