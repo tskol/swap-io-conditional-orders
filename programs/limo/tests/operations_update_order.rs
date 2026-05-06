@@ -1,4 +1,3 @@
-use anchor_lang::prelude::Pubkey;
 use limo::{
     operations::update_order,
     state::{Order, UpdateOrderMode},
@@ -10,5 +9,5 @@ fn update_order_sets_permissionless_flag() {
 
     update_order(&mut order, UpdateOrderMode::UpdatePermissionless, &[1]).unwrap();
 
-    assert_eq!(order.permissionless, 0);
+    assert_eq!(order.permissionless, 1);
 }
