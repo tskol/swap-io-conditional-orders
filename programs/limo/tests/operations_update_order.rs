@@ -4,6 +4,12 @@ use limo::{
     state::{Order, UpdateOrderMode},
 };
 
+fn assert_update_order_rejected(mode: UpdateOrderMode, value: &[u8]) {
+    let mut order = Order::default();
+
+    assert!(update_order(&mut order, mode, value).is_err());
+}
+
 #[test]
 fn update_order_sets_permissionless_flag() {
     let mut order = Order::default();
@@ -30,8 +36,6 @@ fn update_order_sets_counterparty_pubkey() {
 
 #[test]
 fn update_order_rejects_invalid_value_lengths() {
-    let mut order = Order::default();
-
-    assert!(update_order(&mut order, UpdateOrderMode::UpdatePermissionless, &[]).is_err());
-    assert!(update_order(&mut order, UpdateOrderMode::UpdateCounterparty, &[7; 31]).is_err());
+    assert_update_order_rejected(UpdateOrderMode::UpdatePermissionless, &[]);
+    assert_update_order_rejected(UpdateOrderMode::UpdateCounterparty, &[7; 31]);
 }
