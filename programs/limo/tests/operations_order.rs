@@ -26,23 +26,8 @@ impl VanillaOrderFixture {
     }
 
     fn create_order(&self, order: &mut Order, active_duration_seconds: u64) {
-        create_order(
-            order,
-            self.global_config,
-            self.maker,
-            1_000,
-            2_000,
-            Pubkey::default(),
-            self.input_mint,
-            self.output_mint,
-            self.input_program,
-            self.output_program,
-            OrderType::Vanilla as u8,
-            254,
-            100,
-            active_duration_seconds,
-        )
-        .unwrap();
+        self.try_create_order(order, 100, active_duration_seconds)
+            .unwrap();
     }
 
     fn try_create_order(
