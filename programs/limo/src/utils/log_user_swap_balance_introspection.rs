@@ -210,4 +210,59 @@ mod tests {
 
         assert!(search_start_ix(3, &loader, &swap_program_id).is_err());
     }
+
+    #[test]
+    fn search_start_ix_accepts_single_swap_between_start_and_end() {
+        let swap_program_id = Pubkey::new_unique();
+        let loader = FakeInstructionLoader {
+            instructions: vec![
+                instruction(crate::id()),
+                instruction(swap_program_id),
+                instruction(crate::id()),
+            ],
+            current_index: 2,
+        };
+
+        let start_ix = search_start_ix(2, &loader, &swap_program_id).unwrap();
+
+        assert_eq!(start_ix.program_id, crate::id());
+    }
+
+    #[test]
+    fn search_end_ix_accepts_single_swap_between_start_and_end() {
+        let swap_program_id = Pubkey::new_unique();
+        let loader = FakeInstructionLoader {
+            instructions: vec![
+                instruction(crate::id()),
+                instruction(swap_program_id),
+                instruction(crate::id()),
+            ],
+            current_index: 0,
+        };
+
+        let end_ix = search_end_ix(0, &loader, &swap_program_id).unwrap();
+
+        assert_eq!(end_ix.program_id, crate::id());
+    }
+
+    #[test]
+    fn search_end_ix_rejects_missing_or_repeated_swap() {
+        let swap_program_id = Pubkey::new_unique();
+        let missing_swap_loader = FakeInstructionLoader {
+            instructions: vec![instruction(crate::id()), instruction(crate::id())],
+            current_index: 0,
+        };
+        let repeated_swap_loader = FakeInstructionLoader {
+            instructions: vec![
+                instruction(crate::id()),
+                instruction(swap_program_id),
+                instruction(swap_program_id),
+                instruction(crate::id()),
+            ],
+            current_index: 0,
+        };
+
+        assert!(search_end_ix(0, &missing_swap_loader, &swap_program_id).is_err());
+        assert!(search_end_ix(0, &repeated_swap_loader, &swap_program_id).is_err());
+    }
 }
