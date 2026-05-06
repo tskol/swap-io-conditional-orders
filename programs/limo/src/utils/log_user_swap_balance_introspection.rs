@@ -140,8 +140,8 @@ fn search_start_ix(
             found_start_ix = Some(ix);
             break;
         } else if ix.program_id == *swap_program_id {
-            if found_swap_ix || found_start_ix.is_some() {
-                msg!("Multiple swap instructions or swap instruction before start ix");
+            if found_swap_ix {
+                msg!("More than one swap instruction found between start and end");
                 return err!(LimoError::FlashTxWithUnexpectedIxs);
             }
             found_swap_ix = true;
