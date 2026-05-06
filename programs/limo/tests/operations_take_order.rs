@@ -107,3 +107,10 @@ fn take_order_calcs_rejects_order_with_zero_initial_input_amount() {
 
     assert_take_order_rejected(&order, 1, 1);
 }
+
+#[test]
+fn take_order_calcs_rejects_output_below_minimum_without_fee_pot() {
+    let order = active_vanilla_order();
+
+    assert_take_order_rejected(&order, 500, 999);
+}
