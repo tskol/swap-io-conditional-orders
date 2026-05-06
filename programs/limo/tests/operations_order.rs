@@ -41,5 +41,8 @@ fn create_order_initializes_vanilla_order_fields() {
     assert_eq!(order.initial_input_amount, 1_000);
     assert_eq!(order.remaining_input_amount, 1_000);
     assert_eq!(order.expected_output_amount, 2_000);
-    assert_eq!(order.status, OrderStatus::Filled as u8);
+    assert_eq!(order.status, OrderStatus::Active as u8);
+    assert_eq!(order.number_of_fills, 0);
+    assert_eq!(order.filled_output_amount, 0);
+    assert_eq!(order.expiry_timestamp, 0);
 }
