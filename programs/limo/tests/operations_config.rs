@@ -77,5 +77,5 @@ fn initialize_oracle_pool_sets_feed_and_mint() {
 
     assert_eq!(oracle_pool.global_config, global_config);
     assert_eq!(oracle_pool.token_mint, token_mint);
-    assert_eq!(oracle_pool.oracle_feed_id, [0; 32]);
+    assert_eq!(oracle_pool.oracle_feed_id, [1; 32]);
 }
