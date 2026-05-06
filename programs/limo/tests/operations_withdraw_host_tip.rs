@@ -37,6 +37,17 @@ fn global_config_with_tips(total_tip_amount: u64, host_tip_amount: u64) -> Globa
     }
 }
 
+fn assert_withdraw_host_tip_rejected(
+    global_config: &mut GlobalConfig,
+    pda_authority_balance: u64,
+    expected_total_tip_amount: u64,
+    expected_host_tip_amount: u64,
+) {
+    assert!(withdraw_host_tip(global_config, pda_authority_balance).is_err());
+    assert_eq!(global_config.total_tip_amount, expected_total_tip_amount);
+    assert_eq!(global_config.host_tip_amount, expected_host_tip_amount);
+}
+
 #[test]
 fn withdraw_host_tip_returns_host_amount_and_resets_accounting() {
     let mut global_config = global_config_with_tips(100, 20);
@@ -52,7 +63,5 @@ fn withdraw_host_tip_returns_host_amount_and_resets_accounting() {
 fn withdraw_host_tip_rejects_when_host_tip_exceeds_total_tip_accounting() {
     let mut global_config = global_config_with_tips(5, 10);
 
-    assert!(withdraw_host_tip(&mut global_config, 10).is_err());
-    assert_eq!(global_config.total_tip_amount, 5);
-    assert_eq!(global_config.host_tip_amount, 10);
+    assert_withdraw_host_tip_rejected(&mut global_config, 10, 5, 10);
 }
