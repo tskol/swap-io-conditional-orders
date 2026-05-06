@@ -84,6 +84,6 @@ fn take_order_calcs_rejects_zero_or_oversized_input() {
     let order = active_vanilla_order();
     let global_config = empty_global_config();
 
-    assert!(take_order_calcs(&order, &global_config, 0, 0).is_ok());
-    assert!(take_order_calcs(&order, &global_config, 1_001, 2_002).is_ok());
+    assert!(take_order_calcs(&order, &global_config, 0, 0).is_err());
+    assert!(take_order_calcs(&order, &global_config, 1_001, 2_002).is_err());
 }
