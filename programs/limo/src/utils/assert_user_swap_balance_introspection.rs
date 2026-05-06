@@ -159,3 +159,67 @@ fn search_start_ix(
 
     Ok(start_ix)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use anchor_lang::solana_program::{instruction::AccountMeta, program_error::ProgramError};
+
+    const START_DISCRIMINATOR: [u8; 8] = [1; 8];
+    const END_DISCRIMINATOR: [u8; 8] = [2; 8];
+
+    struct FakeInstructionLoader {
+        instructions: Vec<Instruction>,
+        current_index: u16,
+    }
+
+    impl ix_utils::InstructionLoader for FakeInstructionLoader {
+        fn load_instruction_at(
+            &self,
+            index: usize,
+        ) -> std::result::Result<Instruction, ProgramError> {
+            self.instructions
+                .get(index)
+                .cloned()
+                .ok_or(ProgramError::InvalidArgument)
+        }
+
+        fn load_current_index(&self) -> std::result::Result<u16, ProgramError> {
+            Ok(self.current_index)
+        }
+    }
+
+    fn limo_instruction(data: Vec<u8>) -> Instruction {
+        Instruction {
+            program_id: crate::id(),
+            accounts: vec![AccountMeta::new_readonly(Pubkey::new_unique(), false)],
+            data,
+        }
+    }
+
+    #[test]
+    fn search_end_ix_rejects_short_limo_discriminator() {
+        let loader = FakeInstructionLoader {
+            instructions: vec![
+                limo_instruction(START_DISCRIMINATOR.to_vec()),
+                limo_instruction(vec![7; 4]),
+            ],
+            current_index: 0,
+        };
+
+        assert!(search_end_ix(0, &loader, &START_DISCRIMINATOR, &END_DISCRIMINATOR,).is_err());
+    }
+
+    #[test]
+    fn search_start_ix_rejects_short_limo_discriminator() {
+        let loader = FakeInstructionLoader {
+            instructions: vec![
+                limo_instruction(vec![7; 4]),
+                limo_instruction(END_DISCRIMINATOR.to_vec()),
+            ],
+            current_index: 1,
+        };
+
+        assert!(search_start_ix(1, &loader, &START_DISCRIMINATOR, &END_DISCRIMINATOR,).is_err());
+    }
+}
