@@ -308,7 +308,7 @@ pub fn take_order_calcs(
     let minimum_output_to_send_to_maker = u64::try_from(minimum_output_to_send_to_maker_u128)
         .map_err(|_| dbg_msg!(LimoError::MathOverflow))?;
 
-    let fee_pot = output_amount.checked_sub(minimum_output_to_send_to_maker).unwrap_or(0);
+    let fee_pot = output_amount.saturating_sub(minimum_output_to_send_to_maker);
 
     let mut output_to_send_to_protocol = 0;
     let mut output_keeper_fee = 0;
