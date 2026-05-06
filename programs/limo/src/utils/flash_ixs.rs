@@ -243,7 +243,7 @@ fn token_2022_verify_ix_and_mints(
         | TokenInstruction::MintTo { .. }
         | TokenInstruction::MintToChecked { .. }
         | TokenInstruction::TransferChecked { .. } => {
-            let mint = instruction.accounts[match ix {
+            let mint_index = match ix {
                 TokenInstruction::GetAccountDataSize { .. }
                 | TokenInstruction::InitializeMint { .. }
                 | TokenInstruction::InitializeMint2 { .. }
@@ -257,8 +257,12 @@ fn token_2022_verify_ix_and_mints(
                 | TokenInstruction::InitializeAccount3 { .. }
                 | TokenInstruction::TransferChecked { .. } => 1,
                 _ => 0,
-            }]
-            .pubkey;
+            };
+            let Some(mint_account) = instruction.accounts.get(mint_index) else {
+                msg!("Token instruction missing mint account");
+                return err!(LimoError::FlashTxWithUnexpectedIxs);
+            };
+            let mint = mint_account.pubkey;
 
             *input_mint == mint || *output_mint == mint
         }
