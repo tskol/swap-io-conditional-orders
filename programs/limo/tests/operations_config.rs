@@ -4,6 +4,8 @@ use limo::{
     state::{GlobalConfig, OraclePoolsState},
 };
 
+const TEST_FEED_ID: &str = "0101010101010101010101010101010101010101010101010101010101010101";
+
 fn empty_global_config() -> GlobalConfig {
     GlobalConfig {
         emergency_mode: 0,
@@ -40,6 +42,14 @@ fn empty_global_config() -> GlobalConfig {
     }
 }
 
+fn empty_oracle_pool() -> OraclePoolsState {
+    OraclePoolsState {
+        global_config: Pubkey::default(),
+        oracle_feed_id: [0; 32],
+        token_mint: Pubkey::default(),
+    }
+}
+
 #[test]
 fn initialize_global_config_sets_authorities_and_defaults() {
     let mut global_config = empty_global_config();
@@ -59,18 +69,14 @@ fn initialize_global_config_sets_authorities_and_defaults() {
 
 #[test]
 fn initialize_oracle_pool_sets_feed_and_mint() {
-    let mut oracle_pool = OraclePoolsState {
-        global_config: Pubkey::default(),
-        oracle_feed_id: [0; 32],
-        token_mint: Pubkey::default(),
-    };
+    let mut oracle_pool = empty_oracle_pool();
     let global_config = Pubkey::new_unique();
     let token_mint = Pubkey::new_unique();
 
     initialize_oracle_pool(
         &mut oracle_pool,
         global_config,
-        "0101010101010101010101010101010101010101010101010101010101010101".to_string(),
+        TEST_FEED_ID.to_string(),
         token_mint,
     )
     .unwrap();
@@ -82,11 +88,7 @@ fn initialize_oracle_pool_sets_feed_and_mint() {
 
 #[test]
 fn initialize_oracle_pool_rejects_invalid_feed_id() {
-    let mut oracle_pool = OraclePoolsState {
-        global_config: Pubkey::default(),
-        oracle_feed_id: [0; 32],
-        token_mint: Pubkey::default(),
-    };
+    let mut oracle_pool = empty_oracle_pool();
 
     let result = initialize_oracle_pool(
         &mut oracle_pool,
