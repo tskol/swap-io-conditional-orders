@@ -25,5 +25,5 @@ fn update_order_sets_counterparty_pubkey() {
     )
     .unwrap();
 
-    assert_eq!(order.counterparty, Pubkey::default());
+    assert_eq!(order.counterparty, counterparty);
 }
