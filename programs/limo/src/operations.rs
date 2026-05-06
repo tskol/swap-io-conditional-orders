@@ -170,8 +170,13 @@ pub fn close_order_and_claim_tip(
         LimoError::OrderCanNotBeCanceled
     );
 
+    let close_after_timestamp = order
+        .last_updated_timestamp
+        .checked_add(global_config.order_close_delay_seconds)
+        .ok_or_else(|| dbg_msg!(LimoError::MathOverflow))?;
+
     require!(
-        current_timestamp >= order.last_updated_timestamp + global_config.order_close_delay_seconds,
+        current_timestamp >= close_after_timestamp,
         LimoError::NotEnoughTimePassedSinceLastUpdate
     );
 
