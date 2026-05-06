@@ -243,21 +243,7 @@ fn token_2022_verify_ix_and_mints(
         | TokenInstruction::MintTo { .. }
         | TokenInstruction::MintToChecked { .. }
         | TokenInstruction::TransferChecked { .. } => {
-            let mint_index = match ix {
-                TokenInstruction::GetAccountDataSize { .. }
-                | TokenInstruction::InitializeMint { .. }
-                | TokenInstruction::InitializeMint2 { .. }
-                | TokenInstruction::MintTo { .. }
-                | TokenInstruction::MintToChecked { .. } => 0,
-                TokenInstruction::Burn { .. }
-                | TokenInstruction::BurnChecked { .. }
-                | TokenInstruction::FreezeAccount
-                | TokenInstruction::InitializeAccount
-                | TokenInstruction::InitializeAccount2 { .. }
-                | TokenInstruction::InitializeAccount3 { .. }
-                | TokenInstruction::TransferChecked { .. } => 1,
-                _ => 0,
-            };
+            let mint_index = token_2022_mint_account_index(&ix);
             let Some(mint_account) = instruction.accounts.get(mint_index) else {
                 msg!("Token instruction missing mint account");
                 return err!(LimoError::FlashTxWithUnexpectedIxs);
@@ -276,6 +262,24 @@ fn token_2022_verify_ix_and_mints(
     require!(is_permitted, LimoError::FlashTxWithUnexpectedIxs);
 
     Ok(())
+}
+
+fn token_2022_mint_account_index(ix: &TokenInstruction) -> usize {
+    match ix {
+        TokenInstruction::GetAccountDataSize { .. }
+        | TokenInstruction::InitializeMint { .. }
+        | TokenInstruction::InitializeMint2 { .. }
+        | TokenInstruction::MintTo { .. }
+        | TokenInstruction::MintToChecked { .. } => 0,
+        TokenInstruction::Burn { .. }
+        | TokenInstruction::BurnChecked { .. }
+        | TokenInstruction::FreezeAccount
+        | TokenInstruction::InitializeAccount
+        | TokenInstruction::InitializeAccount2 { .. }
+        | TokenInstruction::InitializeAccount3 { .. }
+        | TokenInstruction::TransferChecked { .. } => 1,
+        _ => 0,
+    }
 }
 
 pub fn check_same_accounts(start_ix: &Instruction, end_ix: &Instruction) -> Result<()> {
