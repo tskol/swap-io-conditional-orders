@@ -39,3 +39,11 @@ fn update_order_rejects_invalid_value_lengths() {
     assert_update_order_rejected(UpdateOrderMode::UpdatePermissionless, &[]);
     assert_update_order_rejected(UpdateOrderMode::UpdateCounterparty, &[7; 31]);
 }
+
+#[test]
+fn update_order_rejects_invalid_permissionless_flag() {
+    let mut order = Order::default();
+
+    assert!(update_order(&mut order, UpdateOrderMode::UpdatePermissionless, &[2]).is_err());
+    assert_eq!(order.permissionless, 0);
+}
