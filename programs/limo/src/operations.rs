@@ -180,9 +180,13 @@ pub fn close_order_and_claim_tip(
         LimoError::OrderWithinFlashOperation
     );
 
-    order.status = OrderStatus::Cancelled as u8;
+    let total_tip_amount = global_config
+        .total_tip_amount
+        .checked_sub(order.tip_amount)
+        .ok_or_else(|| dbg_msg!(LimoError::InvalidTipBalance))?;
 
-    global_config.total_tip_amount -= order.tip_amount;
+    order.status = OrderStatus::Cancelled as u8;
+    global_config.total_tip_amount = total_tip_amount;
 
     Ok(())
 }
