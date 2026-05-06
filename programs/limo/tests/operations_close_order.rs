@@ -77,3 +77,15 @@ fn close_order_cancels_active_order_and_claims_tip() {
     assert_eq!(order.status, OrderStatus::Cancelled as u8);
     assert_eq!(global_config.total_tip_amount, 40);
 }
+
+#[test]
+fn close_order_rejects_before_close_delay_passes() {
+    let mut order = active_order_with_tip(10);
+    let mut global_config = empty_global_config();
+    global_config.total_tip_amount = 50;
+    global_config.order_close_delay_seconds = 6;
+
+    assert!(close_order_and_claim_tip(&mut order, &mut global_config, 105).is_ok());
+    assert_eq!(order.status, OrderStatus::Cancelled as u8);
+    assert_eq!(global_config.total_tip_amount, 40);
+}
