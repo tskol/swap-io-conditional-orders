@@ -81,7 +81,7 @@ pub fn create_order(
     current_timestamp: i64,
     active_duration_seconds: u64,
 ) -> Result<()> {
-    let timestamp = current_timestamp.try_into().expect("Negative timestamp");
+    let timestamp = current_timestamp.try_into().map_err(LimoError::from)?;
     order.global_config = global_config;
     order.initial_input_amount = input_amount;
     order.remaining_input_amount = input_amount;
