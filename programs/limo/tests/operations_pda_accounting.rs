@@ -40,6 +40,24 @@ fn global_config_with_accounting(
     }
 }
 
+fn assert_pda_accounting_rejected(
+    global_config: &mut GlobalConfig,
+    pda_authority_balance: u64,
+    tip: u64,
+    expected_previous_lamports_balance: u64,
+) {
+    assert!(validate_pda_authority_balance_and_update_accounting(
+        global_config,
+        pda_authority_balance,
+        tip
+    )
+    .is_err());
+    assert_eq!(
+        global_config.pda_authority_previous_lamports_balance,
+        expected_previous_lamports_balance
+    );
+}
+
 #[test]
 fn pda_accounting_accepts_tip_transfer_and_updates_previous_balance() {
     let mut global_config = global_config_with_accounting(50, 70);
@@ -53,18 +71,12 @@ fn pda_accounting_accepts_tip_transfer_and_updates_previous_balance() {
 fn pda_accounting_rejects_when_pda_balance_is_below_total_tip_accounting() {
     let mut global_config = global_config_with_accounting(10, 100);
 
-    assert!(
-        validate_pda_authority_balance_and_update_accounting(&mut global_config, 50, 5).is_err()
-    );
-    assert_eq!(global_config.pda_authority_previous_lamports_balance, 10);
+    assert_pda_accounting_rejected(&mut global_config, 50, 5, 10);
 }
 
 #[test]
 fn pda_accounting_rejects_when_pda_balance_drops_below_previous_balance() {
     let mut global_config = global_config_with_accounting(50, 40);
 
-    assert!(
-        validate_pda_authority_balance_and_update_accounting(&mut global_config, 49, 0).is_err()
-    );
-    assert_eq!(global_config.pda_authority_previous_lamports_balance, 50);
+    assert_pda_accounting_rejected(&mut global_config, 49, 0, 50);
 }
