@@ -46,7 +46,7 @@ fn global_config_with_keeper_fee(keeper_take_fee_bps: u16) -> GlobalConfig {
     global_config
 }
 
-fn active_vanilla_order() -> Order {
+fn active_order_of_type(order_type: OrderType) -> Order {
     let mut order = Order::default();
 
     create_order(
@@ -60,7 +60,7 @@ fn active_vanilla_order() -> Order {
         Pubkey::new_unique(),
         Pubkey::new_unique(),
         Pubkey::new_unique(),
-        OrderType::Vanilla as u8,
+        order_type as u8,
         254,
         100,
         0,
@@ -68,6 +68,10 @@ fn active_vanilla_order() -> Order {
     .unwrap();
 
     order
+}
+
+fn active_vanilla_order() -> Order {
+    active_order_of_type(OrderType::Vanilla)
 }
 
 fn assert_take_order_rejected(order: &Order, input_amount: u64, output_amount: u64) {
@@ -89,6 +93,36 @@ fn take_order_calcs_partial_vanilla_fill_with_keeper_fee() {
     assert_eq!(effects.output_to_send_to_protocol, 0);
     assert_eq!(effects.output_keeper_fee, 10);
     assert_eq!(order.status, OrderStatus::Active as u8);
+}
+
+#[test]
+fn take_order_calcs_limit_parent_splits_fee_pot() {
+    let order = active_order_of_type(OrderType::LimitParent);
+    let mut global_config = empty_global_config();
+    global_config.parent_fill_fee_protocol_bps = 1_000;
+    global_config.parent_fill_fee_keeper_bps = 500;
+
+    let effects = take_order_calcs(&order, &global_config, 500, 1_100).unwrap();
+
+    assert_eq!(effects.input_to_send_to_taker, 500);
+    assert_eq!(effects.output_to_send_to_maker, 1_085);
+    assert_eq!(effects.output_to_send_to_protocol, 10);
+    assert_eq!(effects.output_keeper_fee, 0);
+}
+
+#[test]
+fn take_order_calcs_tp_child_applies_keeper_and_fee_pot_fees() {
+    let order = active_order_of_type(OrderType::LimitTP);
+    let mut global_config = global_config_with_keeper_fee(100);
+    global_config.tp_sl_child_fee_protocol_bps = 1_000;
+    global_config.tp_sl_child_fee_keeper_bps = 500;
+
+    let effects = take_order_calcs(&order, &global_config, 500, 1_100).unwrap();
+
+    assert_eq!(effects.input_to_send_to_taker, 500);
+    assert_eq!(effects.output_to_send_to_maker, 1_085);
+    assert_eq!(effects.output_to_send_to_protocol, 10);
+    assert_eq!(effects.output_keeper_fee, 11);
 }
 
 #[test]
