@@ -886,4 +886,54 @@ mod tests {
 
         assert_active_order_unchanged(&order, u64::MAX);
     }
+
+    #[test]
+    fn take_order_accounting_updates_vanilla_order_and_tips() {
+        let mut global_config = GlobalConfig::default();
+        global_config.host_fee_bps = 2_500;
+        let mut order = active_order();
+
+        update_take_order_accounting_and_tips(
+            &mut global_config,
+            &mut order,
+            250,
+            500,
+            8,
+            101,
+        )
+        .unwrap();
+
+        assert_eq!(order.remaining_input_amount, 750);
+        assert_eq!(order.filled_output_amount, 500);
+        assert_eq!(order.tip_amount, 6);
+        assert_eq!(order.number_of_fills, 1);
+        assert_eq!(order.status, OrderStatus::Active as u8);
+        assert_eq!(order.last_updated_timestamp, 101);
+        assert_eq!(global_config.host_tip_amount, 2);
+        assert_eq!(global_config.total_tip_amount, 8);
+    }
+
+    #[test]
+    fn take_order_accounting_marks_parent_order_filled_and_tracks_child_input() {
+        let mut global_config = GlobalConfig::default();
+        let mut order = active_order();
+        order.order_type = OrderType::LimitParent as u8;
+
+        update_take_order_accounting_and_tips(
+            &mut global_config,
+            &mut order,
+            1_000,
+            2_000,
+            0,
+            101,
+        )
+        .unwrap();
+
+        assert_eq!(order.remaining_input_amount, 0);
+        assert_eq!(order.filled_output_amount, 2_000);
+        assert_eq!(order.available_child_input_amount, 2_000);
+        assert_eq!(order.number_of_fills, 1);
+        assert_eq!(order.status, OrderStatus::Filled as u8);
+        assert_eq!(order.last_updated_timestamp, 101);
+    }
 }
