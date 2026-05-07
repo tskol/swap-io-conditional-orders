@@ -12,6 +12,10 @@ use solana_program::{
     program_pack::Pack,
     pubkey::Pubkey,
     rent::Rent,
+    sysvar::instructions::{
+        construct_instructions_data, store_current_index, BorrowedAccountMeta,
+        BorrowedInstruction,
+    },
 };
 
 pub struct TestAccount {
@@ -133,6 +137,28 @@ pub fn token_account(
         .with_lamports(1)
         .with_data(token_account_data(mint, owner, amount))
         .writable()
+}
+
+pub fn instructions_sysvar_data(instructions: &[Instruction], current_index: u16) -> Vec<u8> {
+    let borrowed_instructions = instructions
+        .iter()
+        .map(|instruction| BorrowedInstruction {
+            program_id: &instruction.program_id,
+            accounts: instruction
+                .accounts
+                .iter()
+                .map(|account| BorrowedAccountMeta {
+                    pubkey: &account.pubkey,
+                    is_signer: account.is_signer,
+                    is_writable: account.is_writable,
+                })
+                .collect(),
+            data: &instruction.data,
+        })
+        .collect::<Vec<_>>();
+    let mut data = construct_instructions_data(&borrowed_instructions);
+    store_current_index(&mut data, current_index);
+    data
 }
 
 pub fn executable_account(key: Pubkey, owner: Pubkey) -> TestAccount {
