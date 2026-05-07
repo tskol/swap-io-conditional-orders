@@ -7,9 +7,11 @@ use limo::utils::fraction::{
 fn fraction_helpers_convert_percent_bps_and_scaled_form() {
     let quarter = Fraction::from_percent(25u64);
     let one_percent = bps_u128_to_fraction(100);
+    let quarter_const = pct_u128_to_fraction(25);
 
     assert_eq!(quarter.to_bps::<u64>().unwrap(), 2_500);
     assert_eq!(one_percent.to_percent::<u64>().unwrap(), 1);
+    assert_eq!(quarter_const.to_bps::<u64>().unwrap(), 2_500);
     assert_eq!(pct_u128_to_fraction(100), Fraction::ONE);
     assert_eq!(bps_u128_to_fraction(10_000), Fraction::ONE);
     assert_eq!(Fraction::from_sf(to_sf(3u64)), Fraction::from_num(3u64));
@@ -35,6 +37,13 @@ fn pow_fraction_handles_zero_and_positive_powers() {
         value.checked_pow(2).unwrap().to_bps::<u64>().unwrap(),
         22_500
     );
+}
+
+#[test]
+fn pow_fraction_multiplies_odd_power_accumulator() {
+    let value = Fraction::from_num(2u64);
+
+    assert_eq!(pow_fraction(value, 3).unwrap().to_floor::<u64>(), 8);
 }
 
 #[test]
@@ -73,10 +82,38 @@ fn big_fraction_arithmetic_uses_scaled_values() {
 }
 
 #[test]
+fn big_fraction_assignment_and_scalar_ops_update_scaled_values() {
+    let mut value = BigFraction::from(Fraction::from_num(6u64));
+    value += BigFraction::from_num(2u64);
+    value -= BigFraction::from_num(3u64);
+    value *= BigFraction::from_num(2u64);
+    value /= BigFraction::from_num(5u64);
+    value *= 3u64;
+    value /= 2u64;
+
+    let value_as_fraction: Fraction = value.try_into().unwrap();
+    let scaled_product = BigFraction::from_num(2u64) * 4u64;
+    let scaled_quotient = scaled_product / 2u64;
+    let scaled_quotient: Fraction = scaled_quotient.try_into().unwrap();
+
+    assert_eq!(value_as_fraction.to_floor::<u64>(), 3);
+    assert_eq!(scaled_quotient.to_floor::<u64>(), 4);
+}
+
+#[test]
 fn u128_u256_conversion_rejects_values_that_do_not_fit() {
     let small = U128([1, 2]);
     let small_as_u256 = U256::from(small);
 
     assert_eq!(U128::try_from(small_as_u256).unwrap(), small);
     assert!(U128::try_from(U256([0, 0, 1, 0])).is_err());
+    assert!(U128::try_from(U256([0, 0, 0, 1])).is_err());
+}
+
+#[test]
+fn big_fraction_to_fraction_rejects_values_that_do_not_fit() {
+    let too_large = BigFraction(U256([0, 0, 1, 0]));
+    let result = Fraction::try_from(too_large);
+
+    assert!(result.is_err());
 }
