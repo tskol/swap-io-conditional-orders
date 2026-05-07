@@ -371,21 +371,94 @@ pub mod ix_utils {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use anchor_lang::solana_program::instruction::AccountMeta;
+
+    fn token_2022_instruction(ix: TokenInstruction, accounts: Vec<Pubkey>) -> Instruction {
+        Instruction {
+            program_id: token_2022::ID,
+            accounts: accounts
+                .into_iter()
+                .map(|pubkey| AccountMeta::new_readonly(pubkey, false))
+                .collect(),
+            data: ix.pack(),
+        }
+    }
 
     #[test]
     fn token_2022_verify_ix_and_mints_rejects_missing_mint_account() {
-        let instruction = Instruction {
-            program_id: token_2022::ID,
-            accounts: vec![],
-            data: TokenInstruction::TransferChecked {
+        let instruction = token_2022_instruction(
+            TokenInstruction::TransferChecked {
                 amount: 1,
                 decimals: 6,
-            }
-            .pack(),
-        };
+            },
+            vec![],
+        );
 
         assert!(token_2022_verify_ix_and_mints(
             &instruction,
+            &Pubkey::new_unique(),
+            &Pubkey::new_unique(),
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn token_2022_verify_ix_and_mints_accepts_non_token_2022_program() {
+        let instruction = Instruction {
+            program_id: Pubkey::new_unique(),
+            accounts: vec![],
+            data: vec![],
+        };
+
+        token_2022_verify_ix_and_mints(&instruction, &Pubkey::new_unique(), &Pubkey::new_unique())
+            .unwrap();
+    }
+
+    #[test]
+    fn token_2022_verify_ix_and_mints_accepts_permitted_instruction_without_mint() {
+        let instruction = token_2022_instruction(TokenInstruction::Approve { amount: 1 }, vec![]);
+
+        token_2022_verify_ix_and_mints(&instruction, &Pubkey::new_unique(), &Pubkey::new_unique())
+            .unwrap();
+    }
+
+    #[test]
+    fn token_2022_verify_ix_and_mints_accepts_matching_mint() {
+        let input_mint = Pubkey::new_unique();
+        let instruction = token_2022_instruction(
+            TokenInstruction::TransferChecked {
+                amount: 1,
+                decimals: 6,
+            },
+            vec![Pubkey::new_unique(), input_mint],
+        );
+
+        token_2022_verify_ix_and_mints(&instruction, &input_mint, &Pubkey::new_unique()).unwrap();
+    }
+
+    #[test]
+    fn token_2022_verify_ix_and_mints_rejects_wrong_mint_or_bad_data() {
+        let wrong_mint_ix = token_2022_instruction(
+            TokenInstruction::TransferChecked {
+                amount: 1,
+                decimals: 6,
+            },
+            vec![Pubkey::new_unique(), Pubkey::new_unique()],
+        );
+        let bad_data_ix = Instruction {
+            program_id: token_2022::ID,
+            accounts: vec![],
+            data: vec![255],
+        };
+
+        assert!(token_2022_verify_ix_and_mints(
+            &wrong_mint_ix,
+            &Pubkey::new_unique(),
+            &Pubkey::new_unique(),
+        )
+        .is_err());
+        assert!(token_2022_verify_ix_and_mints(
+            &bad_data_ix,
             &Pubkey::new_unique(),
             &Pubkey::new_unique(),
         )
