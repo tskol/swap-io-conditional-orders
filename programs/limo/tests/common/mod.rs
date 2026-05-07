@@ -116,6 +116,29 @@ pub fn token_account_data(mint: Pubkey, owner: Pubkey, amount: u64) -> Vec<u8> {
     data
 }
 
+pub fn mint_account(key: Pubkey, token_program: Pubkey) -> TestAccount {
+    TestAccount::new(key, token_program)
+        .with_lamports(1)
+        .with_data(mint_account_data())
+}
+
+pub fn token_account(
+    key: Pubkey,
+    token_program: Pubkey,
+    mint: Pubkey,
+    owner: Pubkey,
+    amount: u64,
+) -> TestAccount {
+    TestAccount::new(key, token_program)
+        .with_lamports(1)
+        .with_data(token_account_data(mint, owner, amount))
+        .writable()
+}
+
+pub fn executable_account(key: Pubkey, owner: Pubkey) -> TestAccount {
+    TestAccount::new(key, owner).executable()
+}
+
 pub fn install_noop_syscall_stubs() {
     set_syscall_stubs(Box::new(NoopSyscallStubs {
         clock: Clock {
