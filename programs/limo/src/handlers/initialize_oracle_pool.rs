@@ -27,7 +27,7 @@ pub fn handler_initialize_oracle_pool(ctx: Context<InitializeOraclePool>, feed_i
 #[derive(Accounts)]
 pub struct InitializeOraclePool<'info> {
     #[account(mut)]
-    admin_authority: Signer<'info>,
+    pub admin_authority: Signer<'info>,
 
     #[account(has_one = admin_authority)]
     pub global_config: AccountLoader<'info, GlobalConfig>,

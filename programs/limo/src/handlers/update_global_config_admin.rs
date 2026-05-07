@@ -18,7 +18,7 @@ pub fn handler_update_global_config_admin(ctx: Context<UpdateGlobalConfigAdmin>)
 
 #[derive(Accounts)]
 pub struct UpdateGlobalConfigAdmin<'info> {
-    admin_authority_cached: Signer<'info>,
+    pub admin_authority_cached: Signer<'info>,
 
     #[account(mut, has_one = admin_authority_cached)]
     pub global_config: AccountLoader<'info, GlobalConfig>,
