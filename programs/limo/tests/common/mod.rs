@@ -7,14 +7,13 @@ use solana_program::{
     clock::Clock,
     entrypoint::ProgramResult,
     instruction::Instruction,
-    program_stubs::{set_syscall_stubs, SyscallStubs},
     program_option::COption,
     program_pack::Pack,
+    program_stubs::{set_syscall_stubs, SyscallStubs},
     pubkey::Pubkey,
     rent::Rent,
     sysvar::instructions::{
-        construct_instructions_data, store_current_index, BorrowedAccountMeta,
-        BorrowedInstruction,
+        construct_instructions_data, store_current_index, BorrowedAccountMeta, BorrowedInstruction,
     },
 };
 
