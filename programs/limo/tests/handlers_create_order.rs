@@ -30,6 +30,9 @@ fn create_order_handler_initializes_vanilla_order() {
 
     let mut global_config = GlobalConfig::zeroed();
     global_config.pda_authority = pda_authority_key;
+    global_config.create_order_fee_bps = 100;
+    global_config.ata_creation_cost = 2;
+    global_config.txn_fee_cost = 3;
 
     let mut maker = TestAccount::new(maker_key, owner).signer().writable();
     let mut global_config = TestAccount::new(global_config_key, owner)
