@@ -1,9 +1,68 @@
-use anchor_lang::prelude::Pubkey;
-use anchor_spl::{associated_token::get_associated_token_address_with_program_id, token};
-use limo::utils::constraints::{
-    get_token_account_checked, is_counterparty_matching, is_wsol, verify_ata,
+use anchor_lang::{
+    prelude::{AccountInfo, AccountLoader, Pubkey, Result},
+    Discriminator,
 };
-use solana_program::{account_info::AccountInfo, program_option::COption, program_pack::Pack};
+use anchor_spl::{associated_token::get_associated_token_address_with_program_id, token};
+use bytemuck::{bytes_of, Pod, Zeroable};
+use limo::{
+    state::{GlobalConfig, Order},
+    utils::constraints::{
+        create_new_orders_disabled, emergency_mode_disabled, flash_taking_orders_disabled,
+        get_token_account_checked, is_counterparty_matching, is_wsol, order_expired,
+        taking_orders_disabled, verify_ata,
+    },
+};
+use solana_program::{program_option::COption, program_pack::Pack};
+
+fn zero_copy_account_data<T: Discriminator + Pod>(account: &T) -> Vec<u8> {
+    let mut data = vec![0; 8 + std::mem::size_of::<T>()];
+    data[..8].copy_from_slice(&T::discriminator());
+    data[8..].copy_from_slice(bytes_of(account));
+    data
+}
+
+fn run_global_config_guard(
+    global_config: GlobalConfig,
+    guard: for<'info> fn(&AccountLoader<'info, GlobalConfig>) -> Result<()>,
+) -> bool {
+    let key = Pubkey::new_unique();
+    let owner = limo::ID;
+    let mut lamports = 0;
+    let mut data = zero_copy_account_data(&global_config);
+    let account = AccountInfo::new(
+        &key,
+        false,
+        true,
+        &mut lamports,
+        &mut data,
+        &owner,
+        false,
+        0,
+    );
+    let loader = AccountLoader::<GlobalConfig>::try_from(&account).unwrap();
+
+    guard(&loader).is_err()
+}
+
+fn run_order_expired_guard(order: Order) -> bool {
+    let key = Pubkey::new_unique();
+    let owner = limo::ID;
+    let mut lamports = 0;
+    let mut data = zero_copy_account_data(&order);
+    let account = AccountInfo::new(
+        &key,
+        false,
+        true,
+        &mut lamports,
+        &mut data,
+        &owner,
+        false,
+        0,
+    );
+    let loader = AccountLoader::<Order>::try_from(&account).unwrap();
+
+    order_expired(&loader).is_err()
+}
 
 fn token_account_data(mint: Pubkey, owner: Pubkey, amount: u64) -> Vec<u8> {
     let mut data = vec![0; token::spl_token::state::Account::LEN];
@@ -86,6 +145,62 @@ fn counterparty_matching_prefers_explicit_counterparty() {
         &allowed_taker,
         &allowed_taker,
     ));
+}
+
+#[test]
+fn global_config_guards_accept_disabled_flags_and_reject_enabled_flags() {
+    let mut global_config = GlobalConfig::zeroed();
+
+    assert!(!run_global_config_guard(
+        global_config,
+        emergency_mode_disabled,
+    ));
+    global_config.emergency_mode = 1;
+    assert!(run_global_config_guard(
+        global_config,
+        emergency_mode_disabled,
+    ));
+
+    global_config = GlobalConfig::zeroed();
+    assert!(!run_global_config_guard(
+        global_config,
+        flash_taking_orders_disabled,
+    ));
+    global_config.flash_take_order_blocked = 1;
+    assert!(run_global_config_guard(
+        global_config,
+        flash_taking_orders_disabled,
+    ));
+
+    global_config = GlobalConfig::zeroed();
+    assert!(!run_global_config_guard(
+        global_config,
+        create_new_orders_disabled,
+    ));
+    global_config.new_orders_blocked = 1;
+    assert!(run_global_config_guard(
+        global_config,
+        create_new_orders_disabled,
+    ));
+
+    global_config = GlobalConfig::zeroed();
+    assert!(!run_global_config_guard(
+        global_config,
+        taking_orders_disabled,
+    ));
+    global_config.orders_taking_blocked = 1;
+    assert!(run_global_config_guard(
+        global_config,
+        taking_orders_disabled,
+    ));
+}
+
+#[test]
+fn order_expired_accepts_zero_expiry_without_clock_sysvar() {
+    let mut order = Order::zeroed();
+    order.expiry_timestamp = 0;
+
+    assert!(!run_order_expired_guard(order));
 }
 
 #[test]
