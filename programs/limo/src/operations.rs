@@ -531,6 +531,8 @@ fn update_take_order_accounting_and_tips(
     tip_amount: u64,
     current_timestamp: i64,
 ) -> Result<()> {
+    let last_updated_timestamp = current_timestamp.try_into().map_err(LimoError::from)?;
+
     order.remaining_input_amount = order
         .remaining_input_amount
         .checked_sub(input_to_send_to_taker)
@@ -575,7 +577,7 @@ fn update_take_order_accounting_and_tips(
     {
         order.status = OrderStatus::Filled as u8;
     }
-    order.last_updated_timestamp = current_timestamp.try_into().expect("Negative timestamp");
+    order.last_updated_timestamp = last_updated_timestamp;
     Ok(())
 }
 
