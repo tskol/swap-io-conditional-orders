@@ -532,6 +532,10 @@ fn update_take_order_accounting_and_tips(
     current_timestamp: i64,
 ) -> Result<()> {
     let last_updated_timestamp = current_timestamp.try_into().map_err(LimoError::from)?;
+    let number_of_fills = order
+        .number_of_fills
+        .checked_add(1)
+        .ok_or_else(|| dbg_msg!(LimoError::MathOverflow))?;
 
     order.remaining_input_amount = order
         .remaining_input_amount
@@ -570,7 +574,7 @@ fn update_take_order_accounting_and_tips(
         .checked_add(tip_amount)
         .ok_or_else(|| dbg_msg!(LimoError::MathOverflow))?;
 
-    order.number_of_fills += 1;
+    order.number_of_fills = number_of_fills;
 
     if order.remaining_input_amount == 0
         && order.filled_output_amount >= order.expected_output_amount
