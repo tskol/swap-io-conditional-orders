@@ -635,9 +635,9 @@ fn update_take_child_order_accounting_and_tips(
             .map_err(|_| dbg_msg!(LimoError::MathOverflow))?;
 
         if input_decimals > output_decimals {
-            expected_output_usd_price = expected_output_usd_price.checked_mul(10_u64.pow((input_decimals - output_decimals).try_into().unwrap())).unwrap();
+            expected_output_usd_price = expected_output_usd_price.checked_mul(10_u64.pow((input_decimals - output_decimals).into())).unwrap();
         } else {
-            expected_input_usd_price = expected_input_usd_price.checked_mul(10_u64.pow((output_decimals - input_decimals).try_into().unwrap())).unwrap();
+            expected_input_usd_price = expected_input_usd_price.checked_mul(10_u64.pow((output_decimals - input_decimals).into())).unwrap();
         }
 
         let sl_max_upward_deviation = (Fraction::from_bps(global_config.sl_max_upward_deviation_bps) * Fraction::from(expected_input_usd_price))
