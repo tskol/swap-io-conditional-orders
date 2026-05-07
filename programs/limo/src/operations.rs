@@ -839,6 +839,13 @@ mod tests {
         order
     }
 
+    fn assert_active_order_unchanged(order: &Order) {
+        assert_eq!(order.remaining_input_amount, 1_000);
+        assert_eq!(order.filled_output_amount, 0);
+        assert_eq!(order.number_of_fills, 0);
+        assert_eq!(order.last_updated_timestamp, 100);
+    }
+
     #[test]
     fn take_order_accounting_rejects_negative_timestamp_without_mutating() {
         let mut global_config = GlobalConfig::default();
@@ -854,9 +861,6 @@ mod tests {
         )
         .is_err());
 
-        assert_eq!(order.remaining_input_amount, 1_000);
-        assert_eq!(order.filled_output_amount, 0);
-        assert_eq!(order.number_of_fills, 0);
-        assert_eq!(order.last_updated_timestamp, 100);
+        assert_active_order_unchanged(&order);
     }
 }
