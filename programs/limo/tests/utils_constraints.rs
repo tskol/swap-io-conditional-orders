@@ -4,6 +4,18 @@ use anchor_lang::{
     prelude::{AccountInfo, AccountLoader, Pubkey, Result},
     Discriminator,
 };
+use anchor_spl::token_2022::spl_token_2022::{
+    extension::{
+        confidential_transfer::{ConfidentialTransferAccount, ConfidentialTransferMint},
+        default_account_state::DefaultAccountState,
+        transfer_fee::TransferFeeConfig,
+        transfer_hook::TransferHook,
+        ExtensionType, StateWithExtensionsMut,
+    },
+    state::{
+        Account as Token2022Account, AccountState as Token2022AccountState, Mint as Token2022Mint,
+    },
+};
 use anchor_spl::{
     associated_token::get_associated_token_address_with_program_id, token,
     token_2022::spl_token_2022,
@@ -88,6 +100,127 @@ fn token_account_data(mint: Pubkey, owner: Pubkey, amount: u64) -> Vec<u8> {
     };
     token::spl_token::state::Account::pack(token_account, &mut data).unwrap();
     data
+}
+
+fn token_2022_mint_data_with_extensions<F>(
+    extension_types: &[ExtensionType],
+    configure: F,
+) -> Vec<u8>
+where
+    F: FnOnce(&mut StateWithExtensionsMut<Token2022Mint>),
+{
+    let mint_size =
+        ExtensionType::try_calculate_account_len::<Token2022Mint>(extension_types).unwrap();
+    let mut data = vec![0; mint_size];
+    {
+        let mut state =
+            StateWithExtensionsMut::<Token2022Mint>::unpack_uninitialized(&mut data).unwrap();
+
+        for extension_type in extension_types {
+            match extension_type {
+                ExtensionType::ConfidentialTransferMint => {
+                    state
+                        .init_extension::<ConfidentialTransferMint>(true)
+                        .unwrap();
+                }
+                ExtensionType::DefaultAccountState => {
+                    state.init_extension::<DefaultAccountState>(true).unwrap();
+                }
+                ExtensionType::TransferFeeConfig => {
+                    state.init_extension::<TransferFeeConfig>(true).unwrap();
+                }
+                ExtensionType::TransferHook => {
+                    state.init_extension::<TransferHook>(true).unwrap();
+                }
+                other => panic!("unsupported test mint extension: {other:?}"),
+            }
+        }
+
+        configure(&mut state);
+        state.base = Token2022Mint {
+            mint_authority: COption::None,
+            supply: 0,
+            decimals: 6,
+            is_initialized: true,
+            freeze_authority: COption::None,
+        };
+        state.pack_base();
+        state.init_account_type().unwrap();
+    }
+
+    data
+}
+
+fn token_2022_account_data_with_confidential_extension<F>(
+    mint: Pubkey,
+    owner: Pubkey,
+    configure: F,
+) -> Vec<u8>
+where
+    F: FnOnce(&mut ConfidentialTransferAccount),
+{
+    let account_size = ExtensionType::try_calculate_account_len::<Token2022Account>(&[
+        ExtensionType::ConfidentialTransferAccount,
+    ])
+    .unwrap();
+    let mut data = vec![0; account_size];
+    {
+        let mut state =
+            StateWithExtensionsMut::<Token2022Account>::unpack_uninitialized(&mut data).unwrap();
+        state
+            .init_extension::<ConfidentialTransferAccount>(true)
+            .unwrap();
+        configure(
+            state
+                .get_extension_mut::<ConfidentialTransferAccount>()
+                .unwrap(),
+        );
+        state.base = Token2022Account {
+            mint,
+            owner,
+            amount: 1,
+            delegate: COption::None,
+            state: Token2022AccountState::Initialized,
+            is_native: COption::None,
+            delegated_amount: 0,
+            close_authority: COption::None,
+        };
+        state.pack_base();
+        state.init_account_type().unwrap();
+    }
+
+    data
+}
+
+fn validate_token_2022_mint_data_without_token_accounts(
+    mint_key: &Pubkey,
+    mint_data: &mut [u8],
+) -> Result<()> {
+    let token_program = spl_token_2022::ID;
+    let mut mint_lamports = 0;
+    let mint = account_info_with_data(mint_key, &token_program, &mut mint_lamports, mint_data);
+
+    validate_token_extensions(&mint, vec![])
+}
+
+fn validate_token_2022_mint_and_account_data(
+    mint_key: &Pubkey,
+    mint_data: &mut [u8],
+    token_data: &mut [u8],
+) -> Result<()> {
+    let token_program = spl_token_2022::ID;
+    let token_account_key = Pubkey::new_unique();
+    let mut mint_lamports = 0;
+    let mut token_lamports = 0;
+    let mint = account_info_with_data(mint_key, &token_program, &mut mint_lamports, mint_data);
+    let token_account = account_info_with_data(
+        &token_account_key,
+        &token_program,
+        &mut token_lamports,
+        token_data,
+    );
+
+    validate_token_extensions(&mint, vec![&token_account])
 }
 
 fn account_info_with_data<'a>(
@@ -257,12 +390,8 @@ fn express_relay_permission_check_rejects_wrong_permission_account_before_cpi() 
         &mut permission_lamports,
         &mut permission_data,
     );
-    let pda_authority = account_info_with_data(
-        &pda_authority_key,
-        &owner,
-        &mut pda_lamports,
-        &mut pda_data,
-    );
+    let pda_authority =
+        account_info_with_data(&pda_authority_key, &owner, &mut pda_lamports, &mut pda_data);
     let config_router = account_info_with_data(
         &config_router_key,
         &owner,
@@ -316,9 +445,18 @@ fn validate_token_extensions_accepts_token_2022_mint_without_extensions() {
     let mut token_data = token_2022_account_data(mint_key, owner, 1);
     let token_account_key = Pubkey::new_unique();
 
-    let mint = account_info_with_data(&mint_key, &token_program, &mut mint_lamports, &mut mint_data);
-    let token_account =
-        account_info_with_data(&token_account_key, &token_program, &mut token_lamports, &mut token_data);
+    let mint = account_info_with_data(
+        &mint_key,
+        &token_program,
+        &mut mint_lamports,
+        &mut mint_data,
+    );
+    let token_account = account_info_with_data(
+        &token_account_key,
+        &token_program,
+        &mut token_lamports,
+        &mut token_data,
+    );
 
     validate_token_extensions(&mint, vec![&token_account]).unwrap();
 }
@@ -339,10 +477,120 @@ fn validate_token_extensions_rejects_legacy_token_account_for_token_2022_mint() 
         &mut mint_lamports,
         &mut mint_data,
     );
-    let token_account =
-        account_info_with_data(&token_account_key, &token::ID, &mut token_lamports, &mut token_data);
+    let token_account = account_info_with_data(
+        &token_account_key,
+        &token::ID,
+        &mut token_lamports,
+        &mut token_data,
+    );
 
     assert!(validate_token_extensions(&mint, vec![&token_account]).is_err());
+}
+
+#[test]
+fn validate_token_extensions_rejects_unsupported_token_2022_mint_extension() {
+    let mint_key = Pubkey::new_unique();
+    let mut mint_data =
+        token_2022_mint_data_with_extensions(&[ExtensionType::DefaultAccountState], |_| {});
+
+    assert!(
+        validate_token_2022_mint_data_without_token_accounts(&mint_key, &mut mint_data).is_err()
+    );
+}
+
+#[test]
+fn validate_token_extensions_checks_transfer_fee_and_hook_extensions() {
+    let mint_key = Pubkey::new_unique();
+    let owner = Pubkey::new_unique();
+    let mut token_data = token_2022_account_data(mint_key, owner, 1);
+    let mut valid_mint_data = token_2022_mint_data_with_extensions(
+        &[
+            ExtensionType::TransferFeeConfig,
+            ExtensionType::TransferHook,
+        ],
+        |_| {},
+    );
+    validate_token_2022_mint_and_account_data(&mint_key, &mut valid_mint_data, &mut token_data)
+        .unwrap();
+
+    let mut token_data = token_2022_account_data(mint_key, owner, 1);
+    let mut fee_mint_data =
+        token_2022_mint_data_with_extensions(&[ExtensionType::TransferFeeConfig], |state| {
+            let extension = state.get_extension_mut::<TransferFeeConfig>().unwrap();
+            extension.older_transfer_fee.transfer_fee_basis_points = 1.into();
+        });
+    assert!(validate_token_2022_mint_and_account_data(
+        &mint_key,
+        &mut fee_mint_data,
+        &mut token_data,
+    )
+    .is_err());
+
+    let mut token_data = token_2022_account_data(mint_key, owner, 1);
+    let mut hook_mint_data =
+        token_2022_mint_data_with_extensions(&[ExtensionType::TransferHook], |state| {
+            let extension = state.get_extension_mut::<TransferHook>().unwrap();
+            extension.program_id = Some(Pubkey::new_unique()).try_into().unwrap();
+        });
+    assert!(validate_token_2022_mint_and_account_data(
+        &mint_key,
+        &mut hook_mint_data,
+        &mut token_data,
+    )
+    .is_err());
+}
+
+#[test]
+fn validate_token_extensions_checks_confidential_transfer_extensions() {
+    let mint_key = Pubkey::new_unique();
+    let owner = Pubkey::new_unique();
+    let mut token_data = token_2022_account_data(mint_key, owner, 1);
+    let mut valid_mint_data =
+        token_2022_mint_data_with_extensions(&[ExtensionType::ConfidentialTransferMint], |_| {});
+    validate_token_2022_mint_and_account_data(&mint_key, &mut valid_mint_data, &mut token_data)
+        .unwrap();
+
+    let mut token_data = token_2022_account_data(mint_key, owner, 1);
+    let mut auto_approve_mint_data =
+        token_2022_mint_data_with_extensions(&[ExtensionType::ConfidentialTransferMint], |state| {
+            let extension = state
+                .get_extension_mut::<ConfidentialTransferMint>()
+                .unwrap();
+            extension.auto_approve_new_accounts = true.into();
+        });
+    assert!(validate_token_2022_mint_and_account_data(
+        &mint_key,
+        &mut auto_approve_mint_data,
+        &mut token_data,
+    )
+    .is_err());
+
+    let mut valid_mint_data =
+        token_2022_mint_data_with_extensions(&[ExtensionType::ConfidentialTransferMint], |_| {});
+    let mut credits_token_data =
+        token_2022_account_data_with_confidential_extension(mint_key, owner, |extension| {
+            extension.allow_confidential_credits = true.into();
+        });
+    assert!(validate_token_2022_mint_and_account_data(
+        &mint_key,
+        &mut valid_mint_data,
+        &mut credits_token_data,
+    )
+    .is_err());
+
+    let mut valid_mint_data =
+        token_2022_mint_data_with_extensions(&[ExtensionType::ConfidentialTransferMint], |_| {});
+    let mut pending_token_data =
+        token_2022_account_data_with_confidential_extension(mint_key, owner, |extension| {
+            extension.pending_balance_lo.0[0] = 1;
+            extension.pending_balance_hi.0[0] = 1;
+        });
+    assert!(validate_token_2022_mint_and_account_data(
+        &mint_key,
+        &mut valid_mint_data,
+        &mut pending_token_data,
+    )
+    .is_err());
 }
 
 #[test]
