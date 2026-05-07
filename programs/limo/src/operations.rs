@@ -810,3 +810,51 @@ fn update_global_config_pubkey(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn active_order() -> Order {
+        let mut order = Order::default();
+        create_order(
+            &mut order,
+            Pubkey::new_unique(),
+            Pubkey::new_unique(),
+            1_000,
+            2_000,
+            Pubkey::default(),
+            Pubkey::new_unique(),
+            Pubkey::new_unique(),
+            Pubkey::new_unique(),
+            Pubkey::new_unique(),
+            OrderType::Vanilla as u8,
+            254,
+            100,
+            0,
+        )
+        .unwrap();
+        order
+    }
+
+    #[test]
+    fn take_order_accounting_rejects_negative_timestamp_without_mutating() {
+        let mut global_config = GlobalConfig::default();
+        let mut order = active_order();
+
+        assert!(update_take_order_accounting_and_tips(
+            &mut global_config,
+            &mut order,
+            100,
+            200,
+            0,
+            -1,
+        )
+        .is_err());
+
+        assert_eq!(order.remaining_input_amount, 1_000);
+        assert_eq!(order.filled_output_amount, 0);
+        assert_eq!(order.number_of_fills, 0);
+        assert_eq!(order.last_updated_timestamp, 100);
+    }
+}
