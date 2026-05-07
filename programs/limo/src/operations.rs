@@ -334,11 +334,9 @@ pub fn take_order_calcs(
 
     let output_to_send_to_maker = output_amount
         .checked_sub(output_to_send_to_protocol)
-        .ok_or(LimoError::MathOverflow)
-        .unwrap()
+        .ok_or_else(|| dbg_msg!(LimoError::MathOverflow))?
         .checked_sub(output_fee_pot_keeper_fee)
-        .ok_or(LimoError::MathOverflow)
-        .unwrap();
+        .ok_or_else(|| dbg_msg!(LimoError::MathOverflow))?;
 
     if output_to_send_to_maker < minimum_output_to_send_to_maker {
         msg!("output_amount: {}", output_amount);
