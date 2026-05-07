@@ -65,3 +65,10 @@ fn withdraw_host_tip_rejects_when_host_tip_exceeds_total_tip_accounting() {
 
     assert_withdraw_host_tip_rejected(&mut global_config, 10, 5, 10);
 }
+
+#[test]
+fn withdraw_host_tip_rejects_when_pda_balance_is_below_host_tip() {
+    let mut global_config = global_config_with_tips(20, 10);
+
+    assert_withdraw_host_tip_rejected(&mut global_config, 9, 20, 10);
+}
