@@ -843,10 +843,10 @@ mod tests {
         order
     }
 
-    fn assert_active_order_unchanged(order: &Order) {
+    fn assert_active_order_unchanged(order: &Order, number_of_fills: u64) {
         assert_eq!(order.remaining_input_amount, 1_000);
         assert_eq!(order.filled_output_amount, 0);
-        assert_eq!(order.number_of_fills, 0);
+        assert_eq!(order.number_of_fills, number_of_fills);
         assert_eq!(order.last_updated_timestamp, 100);
     }
 
@@ -865,7 +865,7 @@ mod tests {
         )
         .is_err());
 
-        assert_active_order_unchanged(&order);
+        assert_active_order_unchanged(&order, 0);
     }
 
     #[test]
@@ -884,9 +884,6 @@ mod tests {
         )
         .is_err());
 
-        assert_eq!(order.remaining_input_amount, 1_000);
-        assert_eq!(order.filled_output_amount, 0);
-        assert_eq!(order.number_of_fills, u64::MAX);
-        assert_eq!(order.last_updated_timestamp, 100);
+        assert_active_order_unchanged(&order, u64::MAX);
     }
 }
