@@ -1,6 +1,6 @@
 use anchor_lang::prelude::Pubkey;
 use limo::{
-    operations::{create_order, take_order_calcs},
+    operations::{create_order, take_order, take_order_calcs},
     state::{GlobalConfig, Order, OrderStatus, OrderType},
 };
 
@@ -123,6 +123,69 @@ fn take_order_calcs_tp_child_applies_keeper_and_fee_pot_fees() {
     assert_eq!(effects.output_to_send_to_maker, 1_085);
     assert_eq!(effects.output_to_send_to_protocol, 10);
     assert_eq!(effects.output_keeper_fee, 11);
+}
+
+#[test]
+fn take_order_updates_vanilla_order_accounting() {
+    let mut order = active_vanilla_order();
+    let mut global_config = global_config_with_keeper_fee(100);
+
+    let effects = take_order(
+        &mut global_config,
+        &mut order,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        6,
+        6,
+        500,
+        4,
+        101,
+        1_000,
+    )
+    .unwrap();
+
+    assert_eq!(effects.input_to_send_to_taker, 500);
+    assert_eq!(effects.output_to_send_to_maker, 1_000);
+    assert_eq!(effects.output_keeper_fee, 10);
+    assert_eq!(order.remaining_input_amount, 500);
+    assert_eq!(order.filled_output_amount, 1_000);
+    assert_eq!(order.tip_amount, 4);
+    assert_eq!(order.number_of_fills, 1);
+    assert_eq!(order.last_updated_timestamp, 101);
+    assert_eq!(global_config.total_tip_amount, 4);
+}
+
+#[test]
+fn take_order_rejects_order_locked_by_flash_operation() {
+    let mut order = active_vanilla_order();
+    order.flash_ix_lock = 1;
+    let mut global_config = empty_global_config();
+
+    assert!(take_order(
+        &mut global_config,
+        &mut order,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
+        6,
+        6,
+        500,
+        0,
+        101,
+        1_000,
+    )
+    .is_err());
+
+    assert_eq!(order.remaining_input_amount, 1_000);
+    assert_eq!(order.filled_output_amount, 0);
+    assert_eq!(order.number_of_fills, 0);
 }
 
 #[test]
