@@ -7,7 +7,8 @@ use anchor_spl::token_interface::{spl_token_2022, Mint, TokenAccount, TokenInter
 use bytemuck::Zeroable;
 use common::{mint_account_data, token_account_data, zero_copy_account_data, TestAccount};
 use limo::{
-    handlers::initialize_vault::{handler_initialize_vault, InitializeVault, InitializeVaultBumps},
+    handlers::initialize_vault::{InitializeVault, InitializeVaultBumps},
+    limo as program,
     state::GlobalConfig,
 };
 
@@ -72,5 +73,5 @@ fn initialize_vault_handler_accepts_initialized_context() {
         },
     );
 
-    handler_initialize_vault(ctx).unwrap();
+    program::initialize_vault(ctx).unwrap();
 }

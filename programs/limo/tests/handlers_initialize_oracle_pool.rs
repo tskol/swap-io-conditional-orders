@@ -10,8 +10,9 @@ use common::{
     TestAccount,
 };
 use limo::{
+    limo as program,
     handlers::initialize_oracle_pool::{
-        handler_initialize_oracle_pool, InitializeOraclePool, InitializeOraclePoolBumps,
+        InitializeOraclePool, InitializeOraclePoolBumps,
     },
     state::{GlobalConfig, OraclePoolsState},
 };
@@ -56,7 +57,7 @@ fn initialize_oracle_pool_handler_initializes_feed_and_mint() {
         oracle_pool: 251,
     });
 
-    handler_initialize_oracle_pool(ctx, TEST_FEED_ID.to_string()).unwrap();
+    program::initialize_oracle_pool(ctx, TEST_FEED_ID.to_string()).unwrap();
 
     let oracle_pool_data = oracle_pool_info.try_borrow_data().unwrap();
     let oracle_pool = from_bytes::<OraclePoolsState>(

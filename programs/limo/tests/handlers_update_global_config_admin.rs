@@ -4,8 +4,9 @@ use anchor_lang::prelude::{AccountLoader, Context, Pubkey, Signer};
 use bytemuck::Zeroable;
 use common::{zero_copy_account_data, TestAccount};
 use limo::{
+    limo as program,
     handlers::update_global_config_admin::{
-        handler_update_global_config_admin, UpdateGlobalConfigAdmin, UpdateGlobalConfigAdminBumps,
+        UpdateGlobalConfigAdmin, UpdateGlobalConfigAdminBumps,
     },
     state::GlobalConfig,
 };
@@ -36,7 +37,7 @@ fn update_global_config_admin_handler_promotes_cached_admin() {
     };
     let ctx = Context::new(&program_id, &mut accounts, &[], UpdateGlobalConfigAdminBumps {});
 
-    handler_update_global_config_admin(ctx).unwrap();
+    program::update_global_config_admin(ctx).unwrap();
 
     let global_config = AccountLoader::<GlobalConfig>::try_from(&global_config_info).unwrap();
     assert_eq!(global_config.load().unwrap().admin_authority, new_admin_key);

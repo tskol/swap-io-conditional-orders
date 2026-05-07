@@ -4,8 +4,9 @@ use anchor_lang::prelude::{AccountLoader, Context, Pubkey, Signer};
 use bytemuck::Zeroable;
 use common::{install_noop_syscall_stubs, zero_copy_account_data, TestAccount};
 use limo::{
+    limo as program,
     handlers::update_global_config::{
-        handler_update_global_config, UpdateGlobalConfig, UpdateGlobalConfigBumps,
+        UpdateGlobalConfig, UpdateGlobalConfigBumps,
     },
     state::{GlobalConfig, UpdateGlobalConfigMode, UpdateGlobalConfigValue},
 };
@@ -37,7 +38,7 @@ fn update_global_config_handler_updates_txn_fee_cost() {
     let ctx = Context::new(&program_id, &mut accounts, &[], UpdateGlobalConfigBumps {});
     let value = UpdateGlobalConfigValue::U64(333).to_raw_bytes_array();
 
-    handler_update_global_config(ctx, UpdateGlobalConfigMode::UpdateTxnFeeCost as u16, &value)
+    program::update_global_config(ctx, UpdateGlobalConfigMode::UpdateTxnFeeCost as u16, value)
         .unwrap();
 
     let global_config = AccountLoader::<GlobalConfig>::try_from(&global_config_info).unwrap();

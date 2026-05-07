@@ -4,7 +4,8 @@ use anchor_lang::{
 };
 use bytemuck::{bytes_of, Pod, Zeroable};
 use limo::{
-    handlers::update_order::{handler_update_order, UpdateOrder, UpdateOrderBumps},
+    handlers::update_order::{UpdateOrder, UpdateOrderBumps},
+    limo as program,
     operations::create_order,
     state::{GlobalConfig, Order, OrderType, UpdateOrderMode},
 };
@@ -92,7 +93,7 @@ fn update_order_handler_sets_permissionless_flag() {
     };
     let ctx = Context::new(&program_id, &mut accounts, &[], UpdateOrderBumps {});
 
-    handler_update_order(ctx, UpdateOrderMode::UpdatePermissionless, &[1]).unwrap();
+    program::update_order(ctx, UpdateOrderMode::UpdatePermissionless, vec![1]).unwrap();
 
     let order = AccountLoader::<Order>::try_from(&order_info).unwrap();
     assert_eq!(order.load().unwrap().permissionless, 1);

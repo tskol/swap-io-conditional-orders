@@ -4,7 +4,8 @@ use anchor_lang::{
 };
 use bytemuck::{bytes_of, Pod, Zeroable};
 use limo::{
-    handlers::withdraw_host_tip::{withdraw_host_tip, WithdrawHostTip, WithdrawHostTipBumps},
+    handlers::withdraw_host_tip::{WithdrawHostTip, WithdrawHostTipBumps},
+    limo as program,
     state::GlobalConfig,
 };
 
@@ -91,7 +92,7 @@ fn withdraw_host_tip_handler_updates_previous_balance_when_no_tip_is_due() {
     };
     let ctx = Context::new(&program_id, &mut accounts, &[], WithdrawHostTipBumps {});
 
-    withdraw_host_tip(ctx).unwrap();
+    program::withdraw_host_tip(ctx).unwrap();
 
     let global_config = AccountLoader::<GlobalConfig>::try_from(&global_config_info).unwrap();
     let global_config = global_config.load().unwrap();

@@ -14,7 +14,8 @@ use common::{
     zero_copy_account_data, TestAccount,
 };
 use limo::{
-    handlers::take_order::{handler_take_order, TakeOrder, TakeOrderBumps},
+    handlers::take_order::{TakeOrder, TakeOrderBumps},
+    limo as program,
     operations::create_order,
     state::{GlobalConfig, Order, OrderType},
 };
@@ -208,7 +209,7 @@ fn take_order_handler_fills_vanilla_order_partially() {
         event_authority: 252,
     });
 
-    handler_take_order(ctx, 500, 1_000, 0).unwrap();
+    program::take_order(ctx, 500, 1_000, 0).unwrap();
 
     let order = AccountLoader::<Order>::try_from(&order_info).unwrap();
     let order = order.load().unwrap();

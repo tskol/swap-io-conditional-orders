@@ -11,8 +11,9 @@ use common::{
 };
 use limo::{
     handlers::close_order_and_claim_tip::{
-        handler_close_order_and_claim_tip, CloseOrderAndClaimTip, CloseOrderAndClaimTipBumps,
+        CloseOrderAndClaimTip, CloseOrderAndClaimTipBumps,
     },
+    limo as program,
     operations::create_order,
     state::{GlobalConfig, Order, OrderStatus, OrderType},
 };
@@ -145,7 +146,7 @@ fn close_order_handler_cancels_vanilla_order_without_transfers() {
         event_authority: 253,
     });
 
-    handler_close_order_and_claim_tip(ctx).unwrap();
+    program::close_order_and_claim_tip(ctx).unwrap();
 
     let order = AccountLoader::<Order>::try_from(&order_info).unwrap();
     assert_eq!(order.load().unwrap().status, OrderStatus::Cancelled as u8);

@@ -10,7 +10,8 @@ use common::{
     zero_copy_account_data, zeroed_zero_copy_account_data, TestAccount,
 };
 use limo::{
-    handlers::create_order::{handler_create_order, CreateOrder, CreateOrderBumps},
+    handlers::create_order::{CreateOrder, CreateOrderBumps},
+    limo as program,
     state::{GlobalConfig, Order, OrderStatus, OrderType},
 };
 
@@ -105,7 +106,7 @@ fn create_order_handler_initializes_vanilla_order() {
         event_authority: 252,
     });
 
-    handler_create_order(ctx, 1_000, 2_000, OrderType::Vanilla as u8, 0, 0, 0).unwrap();
+    program::create_order(ctx, 1_000, 2_000, OrderType::Vanilla as u8, 0, 0, 0).unwrap();
 
     let order_data = order_info.try_borrow_data().unwrap();
     let order = from_bytes::<Order>(&order_data[8..8 + std::mem::size_of::<Order>()]);

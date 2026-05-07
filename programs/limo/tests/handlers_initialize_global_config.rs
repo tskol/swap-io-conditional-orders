@@ -4,8 +4,9 @@ use anchor_lang::{
 };
 use bytemuck::{from_bytes, Pod};
 use limo::{
+    limo as program,
     handlers::initialize_global_config::{
-        handler_initialize_global_config, InitializeGlobalConfig, InitializeGlobalConfigBumps,
+        InitializeGlobalConfig, InitializeGlobalConfigBumps,
     },
     state::GlobalConfig,
 };
@@ -75,7 +76,7 @@ fn initialize_global_config_handler_sets_authorities_and_defaults() {
         },
     );
 
-    handler_initialize_global_config(ctx).unwrap();
+    program::initialize_global_config(ctx).unwrap();
 
     let global_config = from_bytes::<GlobalConfig>(
         &global_config_data[8..8 + std::mem::size_of::<GlobalConfig>()],
