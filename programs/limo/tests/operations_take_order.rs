@@ -211,3 +211,14 @@ fn take_order_calcs_rejects_output_below_minimum_without_fee_pot() {
 
     assert_take_order_rejected(&order, 500, 999);
 }
+
+#[test]
+fn take_order_calcs_rejects_fee_pot_fees_that_exceed_output_amount() {
+    let order = active_order_of_type(OrderType::LimitParent);
+    let mut global_config = empty_global_config();
+    global_config.parent_fill_fee_protocol_bps = 10_000;
+    global_config.parent_fill_fee_keeper_bps = 10_000;
+
+    assert!(take_order_calcs(&order, &global_config, 1, 5).is_err());
+    assert_eq!(order.status, OrderStatus::Active as u8);
+}
