@@ -1,15 +1,25 @@
+mod common;
+
 use anchor_lang::{
     prelude::{AccountInfo, AccountLoader, Pubkey, Result},
     Discriminator,
 };
-use anchor_spl::{associated_token::get_associated_token_address_with_program_id, token};
+use anchor_spl::{
+    associated_token::get_associated_token_address_with_program_id, token,
+    token_2022::spl_token_2022,
+};
 use bytemuck::{bytes_of, Pod, Zeroable};
+use common::{
+    install_noop_syscall_stubs, mint_account_data as token_2022_mint_data,
+    token_account_data as token_2022_account_data,
+};
 use limo::{
     state::{GlobalConfig, Order},
     utils::constraints::{
-        create_new_orders_disabled, emergency_mode_disabled, flash_taking_orders_disabled,
-        get_token_account_checked, is_counterparty_matching, is_wsol, order_expired,
-        taking_orders_disabled, verify_ata,
+        check_permission_express_relay_and_get_fees, create_new_orders_disabled,
+        emergency_mode_disabled, flash_taking_orders_disabled, get_token_account_checked,
+        is_counterparty_matching, is_wsol, order_expired, taking_orders_disabled,
+        token_2022::validate_token_extensions, verify_ata,
     },
 };
 use solana_program::{program_option::COption, program_pack::Pack};
@@ -201,6 +211,138 @@ fn order_expired_accepts_zero_expiry_without_clock_sysvar() {
     order.expiry_timestamp = 0;
 
     assert!(!run_order_expired_guard(order));
+}
+
+#[test]
+fn order_expired_compares_nonzero_expiry_with_clock() {
+    install_noop_syscall_stubs();
+
+    let mut active_order = Order::zeroed();
+    active_order.expiry_timestamp = 101;
+    assert!(!run_order_expired_guard(active_order));
+
+    let mut expired_order = Order::zeroed();
+    expired_order.expiry_timestamp = 99;
+    assert!(run_order_expired_guard(expired_order));
+}
+
+#[test]
+fn express_relay_permission_check_rejects_wrong_permission_account_before_cpi() {
+    let owner = Pubkey::new_unique();
+    let order_key = Pubkey::new_unique();
+    let wrong_permission_key = Pubkey::new_unique();
+    let sysvar_key = Pubkey::new_unique();
+    let pda_authority_key = Pubkey::new_unique();
+    let config_router_key = Pubkey::new_unique();
+    let relay_metadata_key = Pubkey::new_unique();
+    let relay_program_key = Pubkey::new_unique();
+    let mut sysvar_lamports = 0;
+    let mut permission_lamports = 0;
+    let mut pda_lamports = 0;
+    let mut config_lamports = 0;
+    let mut metadata_lamports = 0;
+    let mut program_lamports = 0;
+    let mut sysvar_data = [];
+    let mut permission_data = [];
+    let mut pda_data = [];
+    let mut config_data = [];
+    let mut metadata_data = [];
+    let mut program_data = [];
+
+    let sysvar_instructions =
+        account_info_with_data(&sysvar_key, &owner, &mut sysvar_lamports, &mut sysvar_data);
+    let permission = account_info_with_data(
+        &wrong_permission_key,
+        &owner,
+        &mut permission_lamports,
+        &mut permission_data,
+    );
+    let pda_authority = account_info_with_data(
+        &pda_authority_key,
+        &owner,
+        &mut pda_lamports,
+        &mut pda_data,
+    );
+    let config_router = account_info_with_data(
+        &config_router_key,
+        &owner,
+        &mut config_lamports,
+        &mut config_data,
+    );
+    let relay_metadata = account_info_with_data(
+        &relay_metadata_key,
+        &owner,
+        &mut metadata_lamports,
+        &mut metadata_data,
+    );
+    let relay_program = account_info_with_data(
+        &relay_program_key,
+        &owner,
+        &mut program_lamports,
+        &mut program_data,
+    );
+
+    assert!(check_permission_express_relay_and_get_fees(
+        &sysvar_instructions,
+        &permission,
+        &pda_authority,
+        &config_router,
+        &relay_metadata,
+        &relay_program,
+        order_key,
+    )
+    .is_err());
+}
+
+#[test]
+fn validate_token_extensions_accepts_legacy_mint_without_token_accounts() {
+    let mint_key = Pubkey::new_unique();
+    let token_program = token::ID;
+    let mut lamports = 0;
+    let mut data = [];
+    let mint = account_info_with_data(&mint_key, &token_program, &mut lamports, &mut data);
+
+    validate_token_extensions(&mint, vec![]).unwrap();
+}
+
+#[test]
+fn validate_token_extensions_accepts_token_2022_mint_without_extensions() {
+    let mint_key = Pubkey::new_unique();
+    let owner = Pubkey::new_unique();
+    let token_program = spl_token_2022::ID;
+    let mut mint_lamports = 0;
+    let mut token_lamports = 0;
+    let mut mint_data = token_2022_mint_data();
+    let mut token_data = token_2022_account_data(mint_key, owner, 1);
+    let token_account_key = Pubkey::new_unique();
+
+    let mint = account_info_with_data(&mint_key, &token_program, &mut mint_lamports, &mut mint_data);
+    let token_account =
+        account_info_with_data(&token_account_key, &token_program, &mut token_lamports, &mut token_data);
+
+    validate_token_extensions(&mint, vec![&token_account]).unwrap();
+}
+
+#[test]
+fn validate_token_extensions_rejects_legacy_token_account_for_token_2022_mint() {
+    let mint_key = Pubkey::new_unique();
+    let owner = Pubkey::new_unique();
+    let mut mint_lamports = 0;
+    let mut token_lamports = 0;
+    let mut mint_data = token_2022_mint_data();
+    let mut token_data = token_account_data(mint_key, owner, 1);
+    let token_account_key = Pubkey::new_unique();
+
+    let mint = account_info_with_data(
+        &mint_key,
+        &spl_token_2022::ID,
+        &mut mint_lamports,
+        &mut mint_data,
+    );
+    let token_account =
+        account_info_with_data(&token_account_key, &token::ID, &mut token_lamports, &mut token_data);
+
+    assert!(validate_token_extensions(&mint, vec![&token_account]).is_err());
 }
 
 #[test]
