@@ -4,9 +4,14 @@ use anchor_lang::{prelude::AccountInfo, Discriminator};
 use anchor_spl::token_interface::spl_token_2022;
 use bytemuck::{bytes_of, Pod};
 use solana_program::{
+    clock::Clock,
+    entrypoint::ProgramResult,
+    instruction::Instruction,
+    program_stubs::{set_syscall_stubs, SyscallStubs},
     program_option::COption,
     program_pack::Pack,
     pubkey::Pubkey,
+    rent::Rent,
 };
 
 pub struct TestAccount {
@@ -109,4 +114,53 @@ pub fn token_account_data(mint: Pubkey, owner: Pubkey, amount: u64) -> Vec<u8> {
     };
     spl_token_2022::state::Account::pack(token_account, &mut data).unwrap();
     data
+}
+
+pub fn install_noop_syscall_stubs() {
+    set_syscall_stubs(Box::new(NoopSyscallStubs {
+        clock: Clock {
+            slot: 0,
+            epoch_start_timestamp: 0,
+            epoch: 0,
+            leader_schedule_epoch: 0,
+            unix_timestamp: 100,
+        },
+        rent: Rent::default(),
+    }));
+}
+
+struct NoopSyscallStubs {
+    clock: Clock,
+    rent: Rent,
+}
+
+impl SyscallStubs for NoopSyscallStubs {
+    fn sol_invoke_signed(
+        &self,
+        _instruction: &Instruction,
+        _account_infos: &[AccountInfo],
+        _signers_seeds: &[&[&[u8]]],
+    ) -> ProgramResult {
+        Ok(())
+    }
+
+    fn sol_get_clock_sysvar(&self, var_addr: *mut u8) -> u64 {
+        copy_sysvar(&self.clock, var_addr);
+        0
+    }
+
+    fn sol_get_rent_sysvar(&self, var_addr: *mut u8) -> u64 {
+        copy_sysvar(&self.rent, var_addr);
+        0
+    }
+}
+
+fn copy_sysvar<T>(sysvar: &T, var_addr: *mut u8) {
+    unsafe {
+        std::ptr::copy_nonoverlapping(
+            sysvar as *const T as *const u8,
+            var_addr,
+            std::mem::size_of::<T>(),
+        );
+    }
 }
