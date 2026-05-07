@@ -102,7 +102,7 @@ pub struct LogUserSwapBalances<'info> {
 #[event_cpi]
 #[derive(Accounts)]
 pub struct LogUserSwapBalancesStartContext<'info> {
-    base_accounts: LogUserSwapBalances<'info>,
+    pub base_accounts: LogUserSwapBalances<'info>,
 
     #[account(
         init,
@@ -125,7 +125,7 @@ pub struct LogUserSwapBalancesStartContext<'info> {
 #[event_cpi]
 #[derive(Accounts)]
 pub struct LogUserSwapBalancesEndContext<'info> {
-    base_accounts: LogUserSwapBalances<'info>,
+    pub base_accounts: LogUserSwapBalances<'info>,
 
     #[account(mut,
         seeds = [seeds::USER_SWAP_BALANCES_SEED, base_accounts.maker.key().as_ref()],
