@@ -332,11 +332,11 @@ pub fn take_order_calcs(
         }
     }
 
-    let output_to_send_to_maker = output_amount
-        .checked_sub(output_to_send_to_protocol)
-        .ok_or_else(|| dbg_msg!(LimoError::MathOverflow))?
-        .checked_sub(output_fee_pot_keeper_fee)
-        .ok_or_else(|| dbg_msg!(LimoError::MathOverflow))?;
+    let output_to_send_to_maker = subtract_take_order_output_fees(
+        output_amount,
+        output_to_send_to_protocol,
+        output_fee_pot_keeper_fee,
+    )?;
 
     if output_to_send_to_maker < minimum_output_to_send_to_maker {
         msg!("output_amount: {}", output_amount);
@@ -358,6 +358,17 @@ pub fn take_order_calcs(
         output_to_send_to_protocol,
         output_keeper_fee,
     })
+}
+
+fn subtract_take_order_output_fees(
+    output_amount: u64,
+    output_to_send_to_protocol: u64,
+    output_fee_pot_keeper_fee: u64,
+) -> Result<u64> {
+    Ok(output_amount
+        .checked_sub(output_to_send_to_protocol)
+        .and_then(|output_amount| output_amount.checked_sub(output_fee_pot_keeper_fee))
+        .ok_or_else(|| dbg_msg!(LimoError::MathOverflow))?)
 }
 
 pub fn take_order(
@@ -887,8 +898,10 @@ mod tests {
 
     #[test]
     fn take_order_accounting_updates_vanilla_order_and_tips() {
-        let mut global_config = GlobalConfig::default();
-        global_config.host_fee_bps = 2_500;
+        let mut global_config = GlobalConfig {
+            host_fee_bps: 2_500,
+            ..GlobalConfig::default()
+        };
         let mut order = active_order();
 
         update_take_order_accounting_and_tips(
