@@ -126,3 +126,23 @@ fn close_order_rejects_when_close_delay_timestamp_overflows() {
 
     assert_close_order_rejected(&mut order, &mut global_config, u64::MAX, 0);
 }
+
+#[test]
+fn close_order_rejects_cancelled_order() {
+    let mut order = active_order_with_tip(0);
+    order.status = OrderStatus::Cancelled as u8;
+    let mut global_config = global_config_with_tip_and_delay(0, 0);
+
+    assert!(close_order_and_claim_tip(&mut order, &mut global_config, 100).is_err());
+    assert_eq!(order.status, OrderStatus::Cancelled as u8);
+    assert_eq!(global_config.total_tip_amount, 0);
+}
+
+#[test]
+fn close_order_rejects_flash_locked_order() {
+    let mut order = active_order_with_tip(0);
+    order.flash_ix_lock = 1;
+    let mut global_config = global_config_with_tip_and_delay(0, 0);
+
+    assert_close_order_rejected(&mut order, &mut global_config, 100, 0);
+}
