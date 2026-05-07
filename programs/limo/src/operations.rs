@@ -863,4 +863,26 @@ mod tests {
 
         assert_active_order_unchanged(&order);
     }
+
+    #[test]
+    fn take_order_accounting_rejects_number_of_fills_overflow_without_mutating() {
+        let mut global_config = GlobalConfig::default();
+        let mut order = active_order();
+        order.number_of_fills = u64::MAX;
+
+        assert!(update_take_order_accounting_and_tips(
+            &mut global_config,
+            &mut order,
+            100,
+            200,
+            0,
+            101,
+        )
+        .is_err());
+
+        assert_eq!(order.remaining_input_amount, 1_000);
+        assert_eq!(order.filled_output_amount, 0);
+        assert_eq!(order.number_of_fills, u64::MAX);
+        assert_eq!(order.last_updated_timestamp, 100);
+    }
 }
