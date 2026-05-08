@@ -1,20 +1,29 @@
 use anchor_lang::{prelude::*, Accounts};
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 // use express_relay::{program::ExpressRelay, state::ExpressRelayMetadata};
+use pyth_solana_receiver_sdk::price_update::PriceUpdateV2;
 use solana_program::sysvar::{instructions::Instructions as SysInstructions, SysvarId};
-use pyth_solana_receiver_sdk::price_update::{PriceUpdateV2};
 
 use crate::{
-    LimoError, OrderDisplay, OrderType, global_seeds, intermediary_seeds, operations::{self, validate_pda_authority_balance_and_update_accounting}, seeds::{self, GLOBAL_AUTH, INTERMEDIARY_OUTPUT_TOKEN_ACCOUNT}, state::{GlobalConfig, Order, TakeOrderEffects, OraclePoolsState}, token_operations::{
+    global_seeds, intermediary_seeds,
+    operations::{self, validate_pda_authority_balance_and_update_accounting},
+    seeds::{self, GLOBAL_AUTH, INTERMEDIARY_OUTPUT_TOKEN_ACCOUNT},
+    state::{GlobalConfig, OraclePoolsState, Order, TakeOrderEffects},
+    token_operations::{
         close_ata_accounts_with_signer_seeds,
         initialize_intermediary_token_account_with_signer_seeds,
-        native_transfer_from_authority_to_user,// native_transfer_from_user_to_account,
-        transfer_from_user_to_token_account, transfer_from_vault_to_token_account,
-    }, utils::constraints::{
+        native_transfer_from_authority_to_user, // native_transfer_from_user_to_account,
+        transfer_from_user_to_token_account,
+        transfer_from_vault_to_token_account,
+    },
+    utils::constraints::{
         // check_permission_express_relay_and_get_fees,
-        is_counterparty_matching, is_wsol,
-        token_2022::validate_token_extensions, verify_ata,
-    }
+        is_counterparty_matching,
+        is_wsol,
+        token_2022::validate_token_extensions,
+        verify_ata,
+    },
+    LimoError, OrderDisplay, OrderType,
 };
 
 pub fn handler_take_order(
@@ -23,65 +32,11 @@ pub fn handler_take_order(
     min_output_amount: u64,
     tip_amount_permissionless_taking: u64,
 ) -> Result<()> {
-    validate_token_extensions(
-        &ctx.accounts.input_mint.to_account_info(),
-        vec![&ctx.accounts.taker_input_ata.to_account_info()],
-    )?;
-    if let Some(maker_output_ata_account) = ctx.accounts.maker_output_ata.as_ref() {
-        validate_token_extensions(
-            &ctx.accounts.output_mint.to_account_info(),
-            vec![
-                &ctx.accounts.taker_output_ata.to_account_info(),
-                &maker_output_ata_account.to_account_info(),
-            ],
-        )?;
-    } else {
-        validate_token_extensions(
-            &ctx.accounts.output_mint.to_account_info(),
-            vec![&ctx.accounts.taker_output_ata.to_account_info()],
-        )?;
-    }
+    validate_take_order_token_extensions(&ctx)?;
+    let (_is_order_permissionless, counterparty) = validate_child_order_accounts(&ctx)?;
 
     let global_config = &mut ctx.accounts.global_config.load_mut()?;
     // let is_filled_by_per = ctx.accounts.permission.is_some();
-
-    let (_is_order_permissionless, counterparty) = {
-        let order = &ctx.accounts.order.load()?;
-
-        // Child order: require/validate parent, and validate brother iff it exists in the parent.
-        if order.parent_order != Pubkey::default() {
-            let parent_loader = ctx
-                .accounts
-                .parent_order
-                .as_ref()
-                .ok_or(LimoError::InvalidAccount)?;
-            require!(parent_loader.key() == order.parent_order, LimoError::InvalidAccount);
-
-            let parent = parent_loader.load()?;
-            let this_order_key = ctx.accounts.order.key();
-            let brother_key = if parent.tp_child_order == this_order_key {
-                parent.sl_child_order
-            } else if parent.sl_child_order == this_order_key {
-                parent.tp_child_order
-            } else {
-                return err!(LimoError::InvalidAccount);
-            };
-
-            // If the "brother" child wasn't created, allow it to be omitted.
-            if brother_key != Pubkey::default() {
-                require!(
-                    ctx.accounts
-                        .brother_order
-                        .as_ref()
-                        .map(|bo| bo.key() == brother_key)
-                        .unwrap_or(false),
-                    LimoError::InvalidAccount
-                );
-            }
-        }
-
-        (order.permissionless != 0, order.counterparty)
-    };
 
     let tip = check_permission_and_get_tip(
         &ctx,
@@ -149,6 +104,71 @@ pub fn handler_take_order(
     });
 
     Ok(())
+}
+
+fn validate_take_order_token_extensions(ctx: &Context<TakeOrder>) -> Result<()> {
+    validate_token_extensions(
+        &ctx.accounts.input_mint.to_account_info(),
+        vec![&ctx.accounts.taker_input_ata.to_account_info()],
+    )?;
+
+    if let Some(maker_output_ata_account) = ctx.accounts.maker_output_ata.as_ref() {
+        validate_token_extensions(
+            &ctx.accounts.output_mint.to_account_info(),
+            vec![
+                &ctx.accounts.taker_output_ata.to_account_info(),
+                &maker_output_ata_account.to_account_info(),
+            ],
+        )?;
+    } else {
+        validate_token_extensions(
+            &ctx.accounts.output_mint.to_account_info(),
+            vec![&ctx.accounts.taker_output_ata.to_account_info()],
+        )?;
+    }
+
+    Ok(())
+}
+
+fn validate_child_order_accounts(ctx: &Context<TakeOrder>) -> Result<(bool, Pubkey)> {
+    let order = &ctx.accounts.order.load()?;
+
+    // Child order: require/validate parent, and validate brother iff it exists in the parent.
+    if order.parent_order != Pubkey::default() {
+        let parent_loader = ctx
+            .accounts
+            .parent_order
+            .as_ref()
+            .ok_or(LimoError::InvalidAccount)?;
+        require!(
+            parent_loader.key() == order.parent_order,
+            LimoError::InvalidAccount
+        );
+
+        let parent = parent_loader.load()?;
+        let this_order_key = ctx.accounts.order.key();
+        let brother_key = if parent.tp_child_order == this_order_key {
+            parent.sl_child_order
+        } else if parent.sl_child_order == this_order_key {
+            parent.tp_child_order
+        } else {
+            return err!(LimoError::InvalidAccount);
+        };
+
+        // If the "brother" child wasn't created, allow it to be omitted.
+        if brother_key != Pubkey::default() {
+            require!(
+                ctx.accounts
+                    .brother_order
+                    .as_ref()
+                    .map(|bo| bo.key() == brother_key)
+                    .unwrap_or(false),
+                LimoError::InvalidAccount
+            );
+        }
+    }
+
+    Ok((order.permissionless != 0, order.counterparty))
 }
 
 #[event_cpi]
@@ -264,7 +284,6 @@ pub struct TakeOrder<'info> {
 
     // #[account(seeds = [express_relay::state::SEED_METADATA], bump, seeds::program = express_relay.key())]
     // pub express_relay_metadata: Account<'info, ExpressRelayMetadata>,
-
     #[account(address = SysInstructions::id())]
     /// CHECK: SysInstructions is a valid sysvar
     pub sysvar_instructions: AccountInfo<'info>,
@@ -274,7 +293,6 @@ pub struct TakeOrder<'info> {
     // #[account(seeds = [express_relay::state::SEED_CONFIG_ROUTER, pda_authority.key().as_ref()], bump, seeds::program = express_relay.key())]
     // /// CHECK: config_router is a valid account
     // pub config_router: UncheckedAccount<'info>,
-
     pub input_token_program: Interface<'info, TokenInterface>,
     pub output_token_program: Interface<'info, TokenInterface>,
 
@@ -295,11 +313,7 @@ fn check_permission_and_get_tip(
     //     return err!(LimoError::PermissionRequiredPermissionlessNotEnabled);
     // }
 
-    if !is_counterparty_matching(
-        order_counterparty,
-        allowed_taker,
-        &ctx.accounts.taker.key()
-    ) {
+    if !is_counterparty_matching(order_counterparty, allowed_taker, &ctx.accounts.taker.key()) {
         return err!(LimoError::CounterpartyDisallowed);
     }
 
@@ -307,16 +321,16 @@ fn check_permission_and_get_tip(
     // let tip = if !is_filled_by_per {
     //     tip_amount_permissionless_taking
     // } else {
-        // check_permission_express_relay_and_get_fees(
-        //     &ctx.accounts.sysvar_instructions,
-        //     ctx.accounts.permission.as_ref().unwrap(),
-        //     &ctx.accounts.pda_authority,
-        //     &ctx.accounts.config_router,
-        //     &ctx.accounts.express_relay_metadata.to_account_info(),
-        //     &ctx.accounts.express_relay,
-        //     ctx.accounts.order.key(),
-        // )?
-        // return err!(LimoError::ExpressRelayDisabled);
+    // check_permission_express_relay_and_get_fees(
+    //     &ctx.accounts.sysvar_instructions,
+    //     ctx.accounts.permission.as_ref().unwrap(),
+    //     &ctx.accounts.pda_authority,
+    //     &ctx.accounts.config_router,
+    //     &ctx.accounts.express_relay_metadata.to_account_info(),
+    //     &ctx.accounts.express_relay,
+    //     ctx.accounts.order.key(),
+    // )?
+    // return err!(LimoError::ExpressRelayDisabled);
     // };
 
     Ok(tip)
@@ -337,7 +351,11 @@ fn transfer_output_and_input(
     let output_is_wsol = is_wsol(&ctx.accounts.output_mint.key());
     let order_is_limit_parent = order_type == OrderType::LimitParent as u8;
     let output_destination_token_account = if order_is_limit_parent {
-        let output_vault = ctx.accounts.output_vault.as_ref().ok_or(LimoError::OutputVaultRequired)?;
+        let output_vault = ctx
+            .accounts
+            .output_vault
+            .as_ref()
+            .ok_or(LimoError::OutputVaultRequired)?;
         output_vault.to_account_info()
     } else if output_is_wsol {
         let intermediary_output_token_account = ctx
