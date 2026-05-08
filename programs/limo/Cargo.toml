@@ -19,6 +19,7 @@ edition2021 = []
 default = []
 mainnet = []
 staging = []
+test-bpf = []
 
 [dependencies]
 anchor-lang.workspace = true
