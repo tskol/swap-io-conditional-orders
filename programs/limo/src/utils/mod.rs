@@ -3,5 +3,8 @@ pub mod constraints;
 pub mod consts;
 pub mod flash_ixs;
 pub mod fraction;
+pub(crate) mod ix_introspection;
+#[cfg(test)]
+pub(crate) mod ix_test_helpers;
 pub mod log_user_swap_balance_introspection;
 pub mod macros;

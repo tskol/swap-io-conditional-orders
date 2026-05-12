@@ -2,9 +2,10 @@ use anchor_lang::{prelude::*, Accounts};
 use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
 use crate::{
-    global_seeds, seeds::{GLOBAL_AUTH, FEE_VAULT},
-    token_operations::{transfer_from_vault_to_token_account}, GlobalConfig,
-    LimoError,
+    global_seeds,
+    seeds::{FEE_VAULT, GLOBAL_AUTH},
+    token_operations::transfer_from_vault_to_token_account,
+    GlobalConfig, LimoError,
 };
 
 pub fn withdraw_fee(ctx: Context<WithdrawFee>, amount: u64) -> Result<()> {

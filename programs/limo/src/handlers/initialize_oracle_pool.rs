@@ -1,20 +1,21 @@
 use anchor_lang::{prelude::*, Accounts};
-use anchor_spl::token_interface::{Mint};
+use anchor_spl::token_interface::Mint;
 
-use crate::{seeds, state::{GlobalConfig, OraclePoolsState}};
+use crate::{
+    seeds,
+    state::{GlobalConfig, OraclePoolsState},
+};
 
-pub fn handler_initialize_oracle_pool(ctx: Context<InitializeOraclePool>, feed_id: String) -> Result<()> {
+pub fn handler_initialize_oracle_pool(
+    ctx: Context<InitializeOraclePool>,
+    feed_id: String,
+) -> Result<()> {
     let oracle_pool = &mut ctx.accounts.oracle_pool.load_init()?;
     let global_config = ctx.accounts.global_config.key();
 
     let token_mint = ctx.accounts.token_mint.key();
 
-    crate::operations::initialize_oracle_pool(
-        oracle_pool,
-        global_config,
-        feed_id,
-        token_mint,
-    )?;
+    crate::operations::initialize_oracle_pool(oracle_pool, global_config, feed_id, token_mint)?;
 
     msg!(
         "Initializing oracle pool for token mint {}",

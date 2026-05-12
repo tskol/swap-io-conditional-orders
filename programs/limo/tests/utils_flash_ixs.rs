@@ -116,8 +116,7 @@ fn public_flash_ix_match_wrappers_read_instruction_sysvar() {
     let second_sysvar_info = second_sysvar.info();
 
     let second_args =
-        ensure_second_ix_match::<TestArgs>(&second_sysvar_info, &input_mint, &output_mint)
-            .unwrap();
+        ensure_second_ix_match::<TestArgs>(&second_sysvar_info, &input_mint, &output_mint).unwrap();
     assert_eq!(second_args, TestArgs { value: 42 });
 }
 

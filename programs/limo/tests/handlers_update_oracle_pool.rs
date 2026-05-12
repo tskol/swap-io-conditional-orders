@@ -1,38 +1,17 @@
-use anchor_lang::{
-    prelude::{AccountInfo, AccountLoader, Context, InterfaceAccount, Pubkey, Signer},
-    Discriminator,
-};
+mod common;
+
+use anchor_lang::prelude::{AccountInfo, AccountLoader, Context, InterfaceAccount, Pubkey, Signer};
 use anchor_spl::token_interface::{spl_token_2022, Mint};
-use bytemuck::{bytes_of, Pod, Zeroable};
+use bytemuck::Zeroable;
+use common::{mint_account_data, zero_copy_account_data};
 use limo::{
     handlers::update_oracle_pool::{
         handler_update_oracle_pool, UpdateOraclePool, UpdateOraclePoolBumps,
     },
     state::{GlobalConfig, OraclePoolsState},
 };
-use solana_program::{program_option::COption, program_pack::Pack};
 
 const TEST_FEED_ID: &str = "0202020202020202020202020202020202020202020202020202020202020202";
-
-fn zero_copy_account_data<T: Discriminator + Pod>(account: &T) -> Vec<u8> {
-    let mut data = vec![0; 8 + std::mem::size_of::<T>()];
-    data[..8].copy_from_slice(&T::discriminator());
-    data[8..].copy_from_slice(bytes_of(account));
-    data
-}
-
-fn mint_account_data() -> Vec<u8> {
-    let mut data = vec![0; spl_token_2022::state::Mint::LEN];
-    let mint = spl_token_2022::state::Mint {
-        mint_authority: COption::None,
-        supply: 0,
-        decimals: 6,
-        is_initialized: true,
-        freeze_authority: COption::None,
-    };
-    spl_token_2022::state::Mint::pack(mint, &mut data).unwrap();
-    data
-}
 
 #[test]
 fn update_oracle_pool_handler_updates_feed_id() {
@@ -109,9 +88,12 @@ fn update_oracle_pool_handler_updates_feed_id() {
         oracle_pool: AccountLoader::try_from(&oracle_pool_info).unwrap(),
         token_mint: Box::new(InterfaceAccount::<Mint>::try_from(&token_mint_info).unwrap()),
     };
-    let ctx = Context::new(&program_id, &mut accounts, &[], UpdateOraclePoolBumps {
-        oracle_pool: 254,
-    });
+    let ctx = Context::new(
+        &program_id,
+        &mut accounts,
+        &[],
+        UpdateOraclePoolBumps { oracle_pool: 254 },
+    );
 
     handler_update_oracle_pool(ctx, TEST_FEED_ID.to_string()).unwrap();
 

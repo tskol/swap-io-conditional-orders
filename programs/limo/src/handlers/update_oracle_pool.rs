@@ -1,16 +1,12 @@
 use anchor_lang::{prelude::*, Accounts};
-use anchor_spl::token_interface::{Mint};
+use anchor_spl::token_interface::Mint;
 
 use crate::{
-    operations,
+    operations, seeds,
     state::{GlobalConfig, OraclePoolsState},
-    seeds,
 };
 
-pub fn handler_update_oracle_pool(
-    ctx: Context<UpdateOraclePool>,
-    feed_id: String,
-) -> Result<()> {
+pub fn handler_update_oracle_pool(ctx: Context<UpdateOraclePool>, feed_id: String) -> Result<()> {
     let oracle_pool = &mut ctx.accounts.oracle_pool.load_mut()?;
 
     operations::update_oracle_pool(oracle_pool, feed_id)?;

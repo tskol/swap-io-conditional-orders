@@ -25,7 +25,9 @@ fn initialize_vault_handler_accepts_initialized_context() {
     global_config.pda_authority = pda_authority_key;
     global_config.pda_authority_bump = 254;
 
-    let mut payer = TestAccount::new(Pubkey::new_unique(), owner).signer().writable();
+    let mut payer = TestAccount::new(Pubkey::new_unique(), owner)
+        .signer()
+        .writable();
     let mut global_config = TestAccount::new(global_config_key, owner)
         .with_data(zero_copy_account_data(&global_config))
         .writable();

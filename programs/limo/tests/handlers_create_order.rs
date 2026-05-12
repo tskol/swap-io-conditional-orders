@@ -6,8 +6,8 @@ use anchor_lang::prelude::{
 use anchor_spl::token_interface::{spl_token_2022, Mint, TokenAccount, TokenInterface};
 use bytemuck::{from_bytes, Zeroable};
 use common::{
-    install_noop_syscall_stubs, mint_account_data, token_account_data,
-    zero_copy_account_data, zeroed_zero_copy_account_data, TestAccount,
+    install_noop_syscall_stubs, mint_account_data, token_account_data, zero_copy_account_data,
+    zeroed_zero_copy_account_data, TestAccount,
 };
 use limo::{
     handlers::create_order::{CreateOrder, CreateOrderBumps},
@@ -16,6 +16,7 @@ use limo::{
 };
 
 #[test]
+#[allow(clippy::too_many_lines)]
 fn create_order_handler_initializes_vanilla_order() {
     install_noop_syscall_stubs();
 
@@ -91,23 +92,32 @@ fn create_order_handler_initializes_vanilla_order() {
         input_mint: Box::new(InterfaceAccount::<Mint>::try_from(&input_mint_info).unwrap()),
         output_mint: Box::new(InterfaceAccount::<Mint>::try_from(&output_mint_info).unwrap()),
         maker_ata: Box::new(InterfaceAccount::<TokenAccount>::try_from(&maker_ata_info).unwrap()),
-        input_vault: Box::new(InterfaceAccount::<TokenAccount>::try_from(&input_vault_info).unwrap()),
+        input_vault: Box::new(
+            InterfaceAccount::<TokenAccount>::try_from(&input_vault_info).unwrap(),
+        ),
         input_fee_vault: Box::new(
             InterfaceAccount::<TokenAccount>::try_from(&input_fee_vault_info).unwrap(),
         ),
         output_vault: None,
-        input_token_program: Interface::<TokenInterface>::try_from(&input_token_program_info).unwrap(),
-        output_token_program: Interface::<TokenInterface>::try_from(&output_token_program_info).unwrap(),
+        input_token_program: Interface::<TokenInterface>::try_from(&input_token_program_info)
+            .unwrap(),
+        output_token_program: Interface::<TokenInterface>::try_from(&output_token_program_info)
+            .unwrap(),
         system_program: Program::<System>::try_from(&system_program_info).unwrap(),
         event_authority: event_authority_info,
         program: program_info,
     };
-    let ctx = Context::new(&program_id, &mut accounts, &[], CreateOrderBumps {
-        input_vault: 254,
-        input_fee_vault: 253,
-        output_vault: 0,
-        event_authority: 252,
-    });
+    let ctx = Context::new(
+        &program_id,
+        &mut accounts,
+        &[],
+        CreateOrderBumps {
+            input_vault: 254,
+            input_fee_vault: 253,
+            output_vault: 0,
+            event_authority: 252,
+        },
+    );
 
     program::create_order(ctx, 1_000, 2_000, OrderType::Vanilla as u8, 0, 0, 0).unwrap();
 
@@ -211,28 +221,45 @@ fn create_order_handler_initializes_parent_and_child_orders() {
         input_mint: Box::new(InterfaceAccount::<Mint>::try_from(&input_mint_info).unwrap()),
         output_mint: Box::new(InterfaceAccount::<Mint>::try_from(&output_mint_info).unwrap()),
         maker_ata: Box::new(InterfaceAccount::<TokenAccount>::try_from(&maker_ata_info).unwrap()),
-        input_vault: Box::new(InterfaceAccount::<TokenAccount>::try_from(&input_vault_info).unwrap()),
+        input_vault: Box::new(
+            InterfaceAccount::<TokenAccount>::try_from(&input_vault_info).unwrap(),
+        ),
         input_fee_vault: Box::new(
             InterfaceAccount::<TokenAccount>::try_from(&input_fee_vault_info).unwrap(),
         ),
         output_vault: Some(Box::new(
             InterfaceAccount::<TokenAccount>::try_from(&output_vault_info).unwrap(),
         )),
-        input_token_program: Interface::<TokenInterface>::try_from(&input_token_program_info).unwrap(),
-        output_token_program: Interface::<TokenInterface>::try_from(&output_token_program_info).unwrap(),
+        input_token_program: Interface::<TokenInterface>::try_from(&input_token_program_info)
+            .unwrap(),
+        output_token_program: Interface::<TokenInterface>::try_from(&output_token_program_info)
+            .unwrap(),
         system_program: Program::<System>::try_from(&system_program_info).unwrap(),
         event_authority: event_authority_info,
         program: program_info,
     };
-    let ctx = Context::new(&program_id, &mut accounts, &[], CreateOrderBumps {
-        input_vault: 254,
-        input_fee_vault: 253,
-        output_vault: 252,
-        event_authority: 251,
-    });
+    let ctx = Context::new(
+        &program_id,
+        &mut accounts,
+        &[],
+        CreateOrderBumps {
+            input_vault: 254,
+            input_fee_vault: 253,
+            output_vault: 252,
+            event_authority: 251,
+        },
+    );
 
-    program::create_order(ctx, 1_000, 2_000, OrderType::LimitParent as u8, 2_500, 900, 10)
-        .unwrap();
+    program::create_order(
+        ctx,
+        1_000,
+        2_000,
+        OrderType::LimitParent as u8,
+        2_500,
+        900,
+        10,
+    )
+    .unwrap();
 
     let order_data = order_info.try_borrow_data().unwrap();
     let order = from_bytes::<Order>(&order_data[8..8 + std::mem::size_of::<Order>()]);

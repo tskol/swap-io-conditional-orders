@@ -1,0 +1,123 @@
+use anchor_lang::prelude::*;
+use derivative::Derivative;
+
+use crate::utils::consts::UPDATE_GLOBAL_CONFIG_BYTE_SIZE;
+
+#[derive(PartialEq, Derivative)]
+#[derivative(Debug)]
+#[account(zero_copy)]
+pub struct GlobalConfig {
+    pub emergency_mode: u8,
+    pub flash_take_order_blocked: u8,
+    pub new_orders_blocked: u8,
+    pub orders_taking_blocked: u8,
+    pub tp_sl_enabled: u8,
+    pub padding3: [u8; 1],
+
+    pub host_fee_bps: u16,
+    pub create_order_fee_bps: u16,
+    pub sl_max_upward_deviation_bps: u16,
+    pub tp_sl_min_distance_bps: u16,
+    pub parent_fill_fee_keeper_bps: u16,
+    pub parent_fill_fee_protocol_bps: u16,
+    pub tp_sl_child_fee_keeper_bps: u16,
+    pub tp_sl_child_fee_protocol_bps: u16,
+
+    pub keeper_take_fee_bps: u16,
+
+    pub order_close_delay_seconds: u64,
+
+    pub keeper_close_fee_bps: u16,
+    pub padding0: [u16; 3],
+    pub padding1: [u64; 8],
+
+    pub pda_authority_previous_lamports_balance: u64,
+    pub total_tip_amount: u64,
+    pub host_tip_amount: u64,
+
+    pub pda_authority: Pubkey,
+    pub pda_authority_bump: u64,
+    pub admin_authority: Pubkey,
+    pub admin_authority_cached: Pubkey,
+    pub allowed_taker: Pubkey,
+    pub txn_fee_cost: u64,
+    pub ata_creation_cost: u64,
+    pub oracle_max_staleness_seconds: u64,
+
+    pub padding2: [u64; 241],
+}
+
+impl Default for GlobalConfig {
+    #[cfg(not(any(feature = "test-bpf", test)))]
+    fn default() -> Self {
+        unimplemented!()
+    }
+
+    #[cfg(any(test, feature = "test-bpf"))]
+    #[inline(never)]
+    fn default() -> GlobalConfig {
+        GlobalConfig {
+            flash_take_order_blocked: 0,
+            new_orders_blocked: 0,
+            orders_taking_blocked: 0,
+            host_fee_bps: 0,
+            order_close_delay_seconds: 0,
+            pda_authority_previous_lamports_balance: 0,
+            total_tip_amount: 0,
+            host_tip_amount: 0,
+            pda_authority: Pubkey::default(),
+            pda_authority_bump: 0,
+            admin_authority: Pubkey::default(),
+            admin_authority_cached: Pubkey::default(),
+            allowed_taker: Pubkey::default(),
+            emergency_mode: 0,
+            ata_creation_cost: 0,
+            tp_sl_enabled: 1,
+            oracle_max_staleness_seconds: 30,
+            create_order_fee_bps: 0,
+            sl_max_upward_deviation_bps: 0,
+            tp_sl_min_distance_bps: 0,
+            parent_fill_fee_keeper_bps: 0,
+            parent_fill_fee_protocol_bps: 0,
+            tp_sl_child_fee_keeper_bps: 0,
+            tp_sl_child_fee_protocol_bps: 0,
+            txn_fee_cost: 0,
+            keeper_take_fee_bps: 0,
+            keeper_close_fee_bps: 0,
+            padding0: [0; 3],
+            padding1: [0; 8],
+            padding2: [0; 241],
+            padding3: [0; 1],
+        }
+    }
+}
+
+#[derive(PartialEq, Eq, Clone, Debug)]
+pub enum UpdateGlobalConfigValue {
+    Bool(bool),
+    U16(u16),
+    U64(u64),
+    Pubkey(Pubkey),
+}
+
+impl UpdateGlobalConfigValue {
+    pub fn to_raw_bytes_array(&self) -> [u8; UPDATE_GLOBAL_CONFIG_BYTE_SIZE] {
+        let mut raw_bytes_array = [0u8; UPDATE_GLOBAL_CONFIG_BYTE_SIZE];
+        match self {
+            UpdateGlobalConfigValue::Bool(v) => {
+                let raw_bytes = vec![*v as u8];
+                raw_bytes_array[..1].copy_from_slice(&raw_bytes);
+            }
+            UpdateGlobalConfigValue::U16(v) => {
+                raw_bytes_array[..2].copy_from_slice(&v.to_le_bytes());
+            }
+            UpdateGlobalConfigValue::U64(v) => {
+                raw_bytes_array[..8].copy_from_slice(&v.to_le_bytes());
+            }
+            UpdateGlobalConfigValue::Pubkey(v) => {
+                raw_bytes_array[..32].copy_from_slice(v.as_ref());
+            }
+        }
+        raw_bytes_array
+    }
+}

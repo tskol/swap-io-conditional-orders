@@ -1,23 +1,13 @@
 mod common;
 
-use anchor_lang::{
-    prelude::{AccountInfo, AccountLoader, Context, Program, Pubkey, Signer, System},
-    Discriminator,
-};
-use bytemuck::{bytes_of, Pod, Zeroable};
-use common::install_noop_syscall_stubs;
+use anchor_lang::prelude::{AccountInfo, AccountLoader, Context, Program, Pubkey, Signer, System};
+use bytemuck::Zeroable;
+use common::{install_noop_syscall_stubs, zero_copy_account_data};
 use limo::{
     handlers::withdraw_host_tip::{WithdrawHostTip, WithdrawHostTipBumps},
     limo as program,
     state::GlobalConfig,
 };
-
-fn zero_copy_account_data<T: Discriminator + Pod>(account: &T) -> Vec<u8> {
-    let mut data = vec![0; 8 + std::mem::size_of::<T>()];
-    data[..8].copy_from_slice(&T::discriminator());
-    data[8..].copy_from_slice(bytes_of(account));
-    data
-}
 
 #[test]
 fn withdraw_host_tip_handler_updates_previous_balance_when_no_tip_is_due() {

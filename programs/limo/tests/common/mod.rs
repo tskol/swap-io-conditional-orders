@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use anchor_lang::{prelude::AccountInfo, Discriminator};
+use anchor_lang::{prelude::AccountInfo, AnchorSerialize, Discriminator};
 use anchor_spl::token_interface::spl_token_2022;
 use bytemuck::{bytes_of, Pod};
 use solana_program::{
@@ -157,6 +157,12 @@ pub fn instructions_sysvar_data(instructions: &[Instruction], current_index: u16
         .collect::<Vec<_>>();
     let mut data = construct_instructions_data(&borrowed_instructions);
     store_current_index(&mut data, current_index);
+    data
+}
+
+pub fn instruction_data<T: AnchorSerialize + Discriminator>(args: &T) -> Vec<u8> {
+    let mut data = T::discriminator().to_vec();
+    args.serialize(&mut data).unwrap();
     data
 }
 

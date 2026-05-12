@@ -4,10 +4,8 @@ use anchor_lang::prelude::{AccountLoader, Context, Pubkey, Signer};
 use bytemuck::Zeroable;
 use common::{zero_copy_account_data, TestAccount};
 use limo::{
+    handlers::update_global_config_admin::{UpdateGlobalConfigAdmin, UpdateGlobalConfigAdminBumps},
     limo as program,
-    handlers::update_global_config_admin::{
-        UpdateGlobalConfigAdmin, UpdateGlobalConfigAdminBumps,
-    },
     state::GlobalConfig,
 };
 
@@ -35,7 +33,12 @@ fn update_global_config_admin_handler_promotes_cached_admin() {
         admin_authority_cached: Signer::try_from(&new_admin_info).unwrap(),
         global_config: AccountLoader::try_from(&global_config_info).unwrap(),
     };
-    let ctx = Context::new(&program_id, &mut accounts, &[], UpdateGlobalConfigAdminBumps {});
+    let ctx = Context::new(
+        &program_id,
+        &mut accounts,
+        &[],
+        UpdateGlobalConfigAdminBumps {},
+    );
 
     program::update_global_config_admin(ctx).unwrap();
 

@@ -1,13 +1,12 @@
 mod common;
 
-use anchor_lang::{
-    prelude::{AccountLoader, Context, InterfaceAccount, Program, Pubkey, Rent, Signer, Sysvar, System},
-    AnchorSerialize, Discriminator,
+use anchor_lang::prelude::{
+    AccountLoader, Context, InterfaceAccount, Program, Pubkey, Rent, Signer, System, Sysvar,
 };
 use anchor_spl::token_interface::{spl_token_2022, TokenAccount};
 use bytemuck::from_bytes;
 use common::{
-    install_noop_syscall_stubs, instructions_sysvar_data, token_account_data,
+    install_noop_syscall_stubs, instruction_data, instructions_sysvar_data, token_account_data,
     zero_copy_account_data, zeroed_zero_copy_account_data, TestAccount,
 };
 use limo::{
@@ -20,12 +19,6 @@ use limo::{
     state::UserSwapBalancesState,
 };
 use solana_program::instruction::{AccountMeta, Instruction};
-
-fn instruction_data<T: AnchorSerialize + Discriminator>(args: &T) -> Vec<u8> {
-    let mut data = T::discriminator().to_vec();
-    args.serialize(&mut data).unwrap();
-    data
-}
 
 fn assert_balance_ixs(
     accounts: Vec<AccountMeta>,

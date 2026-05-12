@@ -1,9 +1,6 @@
 mod common;
 
-use anchor_lang::{
-    prelude::{AccountInfo, AccountLoader, Pubkey, Result},
-    Discriminator,
-};
+use anchor_lang::prelude::{AccountInfo, AccountLoader, Pubkey, Result};
 use anchor_spl::token_2022::spl_token_2022::{
     extension::{
         confidential_transfer::{ConfidentialTransferAccount, ConfidentialTransferMint},
@@ -20,10 +17,10 @@ use anchor_spl::{
     associated_token::get_associated_token_address_with_program_id, token,
     token_2022::spl_token_2022,
 };
-use bytemuck::{bytes_of, Pod, Zeroable};
+use bytemuck::Zeroable;
 use common::{
     install_noop_syscall_stubs, mint_account_data as token_2022_mint_data,
-    token_account_data as token_2022_account_data,
+    token_account_data as token_2022_account_data, zero_copy_account_data,
 };
 use limo::{
     state::{GlobalConfig, Order},
@@ -35,13 +32,6 @@ use limo::{
     },
 };
 use solana_program::{program_option::COption, program_pack::Pack};
-
-fn zero_copy_account_data<T: Discriminator + Pod>(account: &T) -> Vec<u8> {
-    let mut data = vec![0; 8 + std::mem::size_of::<T>()];
-    data[..8].copy_from_slice(&T::discriminator());
-    data[8..].copy_from_slice(bytes_of(account));
-    data
-}
 
 fn run_global_config_guard(
     global_config: GlobalConfig,

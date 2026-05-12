@@ -4,10 +4,8 @@ use anchor_lang::prelude::{AccountLoader, Context, Pubkey, Signer};
 use bytemuck::Zeroable;
 use common::{install_noop_syscall_stubs, zero_copy_account_data, TestAccount};
 use limo::{
+    handlers::update_global_config::{UpdateGlobalConfig, UpdateGlobalConfigBumps},
     limo as program,
-    handlers::update_global_config::{
-        UpdateGlobalConfig, UpdateGlobalConfigBumps,
-    },
     state::{GlobalConfig, UpdateGlobalConfigMode, UpdateGlobalConfigValue},
 };
 

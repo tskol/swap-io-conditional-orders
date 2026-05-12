@@ -10,10 +10,8 @@ use common::{
     TestAccount,
 };
 use limo::{
+    handlers::initialize_oracle_pool::{InitializeOraclePool, InitializeOraclePoolBumps},
     limo as program,
-    handlers::initialize_oracle_pool::{
-        InitializeOraclePool, InitializeOraclePoolBumps,
-    },
     state::{GlobalConfig, OraclePoolsState},
 };
 
@@ -53,9 +51,12 @@ fn initialize_oracle_pool_handler_initializes_feed_and_mint() {
         oracle_pool: AccountLoader::try_from_unchecked(&program_id, &oracle_pool_info).unwrap(),
         system_program: Program::<System>::try_from(&system_program_info).unwrap(),
     };
-    let ctx = Context::new(&program_id, &mut accounts, &[], InitializeOraclePoolBumps {
-        oracle_pool: 251,
-    });
+    let ctx = Context::new(
+        &program_id,
+        &mut accounts,
+        &[],
+        InitializeOraclePoolBumps { oracle_pool: 251 },
+    );
 
     program::initialize_oracle_pool(ctx, TEST_FEED_ID.to_string()).unwrap();
 

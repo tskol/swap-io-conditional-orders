@@ -1,19 +1,13 @@
-use anchor_lang::{
-    prelude::{AccountInfo, AccountLoader, Context, Pubkey, Signer},
-    Discriminator,
-};
-use bytemuck::{from_bytes, Pod};
+mod common;
+
+use anchor_lang::prelude::{AccountInfo, AccountLoader, Context, Pubkey, Signer};
+use bytemuck::from_bytes;
+use common::zeroed_zero_copy_account_data;
 use limo::{
+    handlers::initialize_global_config::{InitializeGlobalConfig, InitializeGlobalConfigBumps},
     limo as program,
-    handlers::initialize_global_config::{
-        InitializeGlobalConfig, InitializeGlobalConfigBumps,
-    },
     state::GlobalConfig,
 };
-
-fn zero_copy_account_data<T: Discriminator + Pod>() -> Vec<u8> {
-    vec![0; 8 + std::mem::size_of::<T>()]
-}
 
 #[test]
 fn initialize_global_config_handler_sets_authorities_and_defaults() {
@@ -50,7 +44,7 @@ fn initialize_global_config_handler_sets_authorities_and_defaults() {
     );
 
     let mut global_config_lamports = 0;
-    let mut global_config_data = zero_copy_account_data::<GlobalConfig>();
+    let mut global_config_data = zeroed_zero_copy_account_data::<GlobalConfig>();
     let global_config_info = AccountInfo::new(
         &global_config_key,
         false,
@@ -71,16 +65,13 @@ fn initialize_global_config_handler_sets_authorities_and_defaults() {
         &program_id,
         &mut accounts,
         &[],
-        InitializeGlobalConfigBumps {
-            pda_authority: 201,
-        },
+        InitializeGlobalConfigBumps { pda_authority: 201 },
     );
 
     program::initialize_global_config(ctx).unwrap();
 
-    let global_config = from_bytes::<GlobalConfig>(
-        &global_config_data[8..8 + std::mem::size_of::<GlobalConfig>()],
-    );
+    let global_config =
+        from_bytes::<GlobalConfig>(&global_config_data[8..8 + std::mem::size_of::<GlobalConfig>()]);
     assert_eq!(global_config.admin_authority, admin_key);
     assert_eq!(global_config.admin_authority_cached, admin_key);
     assert_eq!(global_config.pda_authority, pda_authority_key);

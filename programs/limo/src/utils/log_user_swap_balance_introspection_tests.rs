@@ -1,72 +1,8 @@
 use super::*;
-use anchor_lang::solana_program::{instruction::AccountMeta, program_error::ProgramError};
-use anchor_lang::AnchorSerialize;
-
-const TEST_ARGS_DISCRIMINATOR: [u8; 8] = [9; 8];
-
-#[derive(AnchorSerialize, AnchorDeserialize, Debug, PartialEq, Eq)]
-struct TestArgs {
-    value: u64,
-}
-
-impl Discriminator for TestArgs {
-    const DISCRIMINATOR: [u8; 8] = TEST_ARGS_DISCRIMINATOR;
-}
-
-struct FakeInstructionLoader {
-    instructions: Vec<Instruction>,
-    current_index: u16,
-}
-
-impl ix_utils::InstructionLoader for FakeInstructionLoader {
-    fn load_instruction_at(
-        &self,
-        index: usize,
-    ) -> std::result::Result<Instruction, ProgramError> {
-        self.instructions
-            .get(index)
-            .cloned()
-            .ok_or(ProgramError::InvalidArgument)
-    }
-
-    fn load_current_index(&self) -> std::result::Result<u16, ProgramError> {
-        Ok(self.current_index)
-    }
-}
-
-fn instruction(program_id: Pubkey) -> Instruction {
-    Instruction {
-        program_id,
-        accounts: vec![AccountMeta::new_readonly(Pubkey::new_unique(), false)],
-        data: vec![1; 8],
-    }
-}
-
-fn shared_accounts() -> Vec<AccountMeta> {
-    vec![AccountMeta::new_readonly(Pubkey::new_unique(), false)]
-}
-
-fn instruction_with_accounts(
-    program_id: Pubkey,
-    data: Vec<u8>,
-    accounts: Vec<AccountMeta>,
-) -> Instruction {
-    Instruction {
-        program_id,
-        accounts,
-        data,
-    }
-}
-
-fn limo_instruction(data: Vec<u8>, accounts: Vec<AccountMeta>) -> Instruction {
-    instruction_with_accounts(crate::id(), data, accounts)
-}
-
-fn test_args_data(value: u64) -> Vec<u8> {
-    let mut data = TestArgs::discriminator().to_vec();
-    TestArgs { value }.serialize(&mut data).unwrap();
-    data
-}
+use crate::utils::ix_test_helpers::{
+    instruction, limo_instruction_with_accounts as limo_instruction, shared_accounts,
+    test_args_data, FakeInstructionLoader, TestArgs,
+};
 
 #[test]
 fn ensure_start_ix_match_internal_deserializes_matching_start_ix() {
@@ -230,11 +166,10 @@ fn ensure_log_ixs_reject_bad_discriminator_or_accounts() {
         &swap_program_id,
     )
     .is_err());
-    assert!(ensure_start_ix_match_internal::<TestArgs>(
-        &account_mismatch_loader,
-        &swap_program_id,
-    )
-    .is_err());
+    assert!(
+        ensure_start_ix_match_internal::<TestArgs>(&account_mismatch_loader, &swap_program_id,)
+            .is_err()
+    );
 }
 
 #[test]

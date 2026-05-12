@@ -1,64 +1,24 @@
 mod common;
 
 use anchor_lang::prelude::{AccountInfo, InterfaceAccount, Pubkey, Signer, UncheckedAccount};
-use anchor_lang::{
-    prelude::{AccountLoader, Context, Program, Rent, Sysvar, System},
-    AnchorSerialize, Discriminator,
-};
+use anchor_lang::prelude::{AccountLoader, Context, Program, Rent, System, Sysvar};
 use anchor_spl::token_interface::{spl_token_2022, Mint};
 use bytemuck::from_bytes;
 use common::{
-    install_noop_syscall_stubs, instructions_sysvar_data, zero_copy_account_data,
-    zeroed_zero_copy_account_data, TestAccount,
+    install_noop_syscall_stubs, instruction_data, instructions_sysvar_data, mint_account_data,
+    token_account_data, zero_copy_account_data, zeroed_zero_copy_account_data, TestAccount,
 };
 use limo::{
     handlers::log_user_swap_balances::{
-        get_balances_checked, LogUserSwapBalances, LogUserSwapBalancesEndContext,
-        LogUserSwapBalancesBumps, LogUserSwapBalancesEndContextBumps,
-        LogUserSwapBalancesStartContext,
-        LogUserSwapBalancesStartContextBumps,
+        get_balances_checked, LogUserSwapBalances, LogUserSwapBalancesBumps,
+        LogUserSwapBalancesEndContext, LogUserSwapBalancesEndContextBumps,
+        LogUserSwapBalancesStartContext, LogUserSwapBalancesStartContextBumps,
     },
     instruction::{LogUserSwapBalancesEnd, LogUserSwapBalancesStart},
     limo as program,
     state::UserSwapBalancesState,
 };
-use solana_program::{program_option::COption, program_pack::Pack};
 use solana_program::instruction::{AccountMeta, Instruction};
-
-fn mint_account_data() -> Vec<u8> {
-    let mut data = vec![0; spl_token_2022::state::Mint::LEN];
-    let mint = spl_token_2022::state::Mint {
-        mint_authority: COption::None,
-        supply: 0,
-        decimals: 6,
-        is_initialized: true,
-        freeze_authority: COption::None,
-    };
-    spl_token_2022::state::Mint::pack(mint, &mut data).unwrap();
-    data
-}
-
-fn token_account_data(mint: Pubkey, owner: Pubkey, amount: u64) -> Vec<u8> {
-    let mut data = vec![0; spl_token_2022::state::Account::LEN];
-    let token_account = spl_token_2022::state::Account {
-        mint,
-        owner,
-        amount,
-        delegate: COption::None,
-        state: spl_token_2022::state::AccountState::Initialized,
-        is_native: COption::None,
-        delegated_amount: 0,
-        close_authority: COption::None,
-    };
-    spl_token_2022::state::Account::pack(token_account, &mut data).unwrap();
-    data
-}
-
-fn instruction_data<T: AnchorSerialize + Discriminator>(args: &T) -> Vec<u8> {
-    let mut data = T::discriminator().to_vec();
-    args.serialize(&mut data).unwrap();
-    data
-}
 
 #[allow(clippy::too_many_arguments)]
 fn log_balance_ixs(

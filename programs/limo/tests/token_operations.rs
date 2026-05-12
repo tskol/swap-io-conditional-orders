@@ -1,9 +1,7 @@
 mod common;
 
 use anchor_spl::token_interface::spl_token_2022;
-use common::{
-    install_noop_syscall_stubs, mint_account_data, token_account_data, TestAccount,
-};
+use common::{install_noop_syscall_stubs, mint_account_data, token_account_data, TestAccount};
 use limo::token_operations::{
     close_ata_accounts_with_signer_seeds, initialize_intermediary_token_account_with_signer_seeds,
     lamports_transfer_from_authority_to_account, native_transfer_from_authority_to_user,

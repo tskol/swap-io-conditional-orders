@@ -1,58 +1,10 @@
 use super::*;
-use anchor_lang::solana_program::{instruction::AccountMeta, program_error::ProgramError};
-use anchor_lang::AnchorSerialize;
-
-const TEST_ARGS_DISCRIMINATOR: [u8; 8] = [9; 8];
-
-#[derive(AnchorSerialize, AnchorDeserialize, Debug, PartialEq, Eq)]
-struct TestArgs {
-    value: u64,
-}
-
-impl Discriminator for TestArgs {
-    const DISCRIMINATOR: [u8; 8] = TEST_ARGS_DISCRIMINATOR;
-}
-
-struct FakeInstructionLoader {
-    instructions: Vec<Instruction>,
-    current_index: u16,
-}
-
-impl ix_utils::InstructionLoader for FakeInstructionLoader {
-    fn load_instruction_at(
-        &self,
-        index: usize,
-    ) -> std::result::Result<Instruction, ProgramError> {
-        self.instructions
-            .get(index)
-            .cloned()
-            .ok_or(ProgramError::InvalidArgument)
-    }
-
-    fn load_current_index(&self) -> std::result::Result<u16, ProgramError> {
-        Ok(self.current_index)
-    }
-}
-
-fn shared_accounts() -> Vec<AccountMeta> {
-    vec![AccountMeta::new_readonly(Pubkey::new_unique(), false)]
-}
-
-fn instruction_with_program(
-    program_id: Pubkey,
-    data: Vec<u8>,
-    accounts: Vec<AccountMeta>,
-) -> Instruction {
-    Instruction {
-        program_id,
-        accounts,
-        data,
-    }
-}
-
-fn limo_instruction(data: Vec<u8>, accounts: Vec<AccountMeta>) -> Instruction {
-    instruction_with_program(crate::id(), data, accounts)
-}
+use crate::utils::ix_test_helpers::{
+    instruction_with_accounts as instruction_with_program,
+    limo_instruction_with_accounts as limo_instruction, shared_accounts, test_args_data,
+    FakeInstructionLoader, TestArgs,
+};
+use anchor_lang::solana_program::instruction::AccountMeta;
 
 fn allowed_instruction() -> Instruction {
     instruction_with_program(COMPUTE_BUDGET_PUBKEY, vec![], vec![])
@@ -60,12 +12,6 @@ fn allowed_instruction() -> Instruction {
 
 fn disallowed_instruction() -> Instruction {
     instruction_with_program(Pubkey::new_unique(), vec![], vec![])
-}
-
-fn test_args_data(value: u64) -> Vec<u8> {
-    let mut data = TestArgs::discriminator().to_vec();
-    TestArgs { value }.serialize(&mut data).unwrap();
-    data
 }
 
 fn token_2022_instruction(ix: TokenInstruction, accounts: Vec<Pubkey>) -> Instruction {
@@ -99,12 +45,9 @@ fn ensure_first_ix_match_internal_deserializes_matching_first_ix() {
         current_index: 2,
     };
 
-    let args = ensure_first_ix_match_internal::<TestArgs>(
-        &loader,
-        &input_mint,
-        &Pubkey::new_unique(),
-    )
-    .unwrap();
+    let args =
+        ensure_first_ix_match_internal::<TestArgs>(&loader, &input_mint, &Pubkey::new_unique())
+            .unwrap();
 
     assert_eq!(args, TestArgs { value: 7 });
 }
@@ -129,12 +72,9 @@ fn ensure_second_ix_match_internal_deserializes_matching_second_ix() {
         current_index: 1,
     };
 
-    let args = ensure_second_ix_match_internal::<TestArgs>(
-        &loader,
-        &input_mint,
-        &Pubkey::new_unique(),
-    )
-    .unwrap();
+    let args =
+        ensure_second_ix_match_internal::<TestArgs>(&loader, &input_mint, &Pubkey::new_unique())
+            .unwrap();
 
     assert_eq!(args, TestArgs { value: 42 });
 }

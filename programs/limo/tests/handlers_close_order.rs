@@ -10,9 +10,7 @@ use common::{
     TestAccount,
 };
 use limo::{
-    handlers::close_order_and_claim_tip::{
-        CloseOrderAndClaimTip, CloseOrderAndClaimTipBumps,
-    },
+    handlers::close_order_and_claim_tip::{CloseOrderAndClaimTip, CloseOrderAndClaimTipBumps},
     limo as program,
     operations::create_order,
     state::{GlobalConfig, Order, OrderStatus, OrderType},
@@ -50,6 +48,7 @@ fn active_vanilla_order(
 }
 
 #[test]
+#[allow(clippy::too_many_lines)]
 fn close_order_handler_cancels_vanilla_order_without_transfers() {
     install_noop_syscall_stubs();
 
@@ -67,7 +66,11 @@ fn close_order_handler_cancels_vanilla_order_without_transfers() {
     global_config.pda_authority_bump = 254;
 
     let order = active_vanilla_order(
-        global_config_key, maker_key, input_mint_key, output_mint_key, token_program_key,
+        global_config_key,
+        maker_key,
+        input_mint_key,
+        output_mint_key,
+        token_program_key,
     );
 
     let mut closer = TestAccount::new(maker_key, owner).signer().writable();
@@ -134,17 +137,24 @@ fn close_order_handler_cancels_vanilla_order_without_transfers() {
             InterfaceAccount::<TokenAccount>::try_from(&input_vault_info).unwrap(),
         ),
         output_vault: None,
-        input_token_program: Interface::<TokenInterface>::try_from(&input_token_program_info).unwrap(),
-        output_token_program: Interface::<TokenInterface>::try_from(&output_token_program_info).unwrap(),
+        input_token_program: Interface::<TokenInterface>::try_from(&input_token_program_info)
+            .unwrap(),
+        output_token_program: Interface::<TokenInterface>::try_from(&output_token_program_info)
+            .unwrap(),
         system_program: Program::<System>::try_from(&system_program_info).unwrap(),
         event_authority: event_authority_info,
         program: program_info,
     };
-    let ctx = Context::new(&program_id, &mut accounts, &[], CloseOrderAndClaimTipBumps {
-        input_vault: 254,
-        output_vault: 0,
-        event_authority: 253,
-    });
+    let ctx = Context::new(
+        &program_id,
+        &mut accounts,
+        &[],
+        CloseOrderAndClaimTipBumps {
+            input_vault: 254,
+            output_vault: 0,
+            event_authority: 253,
+        },
+    );
 
     program::close_order_and_claim_tip(ctx).unwrap();
 
@@ -269,7 +279,11 @@ fn close_order_handler_cancels_parent_and_children_with_vault_returns() {
         .writable();
     let mut output_vault = TestAccount::new(Pubkey::new_unique(), token_program_key)
         .with_lamports(1)
-        .with_data(token_account_data(output_mint_key, pda_authority_key, 1_000))
+        .with_data(token_account_data(
+            output_mint_key,
+            pda_authority_key,
+            1_000,
+        ))
         .writable();
     let mut input_token_program = TestAccount::new(token_program_key, owner).executable();
     let mut output_token_program = TestAccount::new(token_program_key, owner).executable();

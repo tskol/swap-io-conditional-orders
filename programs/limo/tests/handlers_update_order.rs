@@ -1,21 +1,14 @@
-use anchor_lang::{
-    prelude::{AccountInfo, AccountLoader, Context, Pubkey, Signer},
-    Discriminator,
-};
-use bytemuck::{bytes_of, Pod, Zeroable};
+mod common;
+
+use anchor_lang::prelude::{AccountInfo, AccountLoader, Context, Pubkey, Signer};
+use bytemuck::Zeroable;
+use common::zero_copy_account_data;
 use limo::{
     handlers::update_order::{UpdateOrder, UpdateOrderBumps},
     limo as program,
     operations::create_order,
     state::{GlobalConfig, Order, OrderType, UpdateOrderMode},
 };
-
-fn zero_copy_account_data<T: Discriminator + Pod>(account: &T) -> Vec<u8> {
-    let mut data = vec![0; 8 + std::mem::size_of::<T>()];
-    data[..8].copy_from_slice(&T::discriminator());
-    data[8..].copy_from_slice(bytes_of(account));
-    data
-}
 
 fn active_order(global_config: Pubkey, maker: Pubkey) -> Order {
     let mut order = Order::default();
