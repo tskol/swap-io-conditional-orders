@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use pyth_solana_receiver_sdk::price_update::PriceUpdateV2;
+use pyth_solana_receiver_sdk::price_update::{Price, PriceUpdateV2};
 
 use crate::{
     dbg_msg,
@@ -42,6 +42,26 @@ pub(super) fn validate_stop_loss_price(
         )
         .map_err(|_| LimoError::InvalidAccount)?;
 
+    validate_stop_loss_price_from_prices(
+        global_config,
+        order,
+        input_price,
+        output_price,
+        input_decimals,
+        output_decimals,
+        input_to_send_to_taker,
+    )
+}
+
+fn validate_stop_loss_price_from_prices(
+    global_config: &GlobalConfig,
+    order: &Order,
+    input_price: Price,
+    output_price: Price,
+    input_decimals: u8,
+    output_decimals: u8,
+    input_to_send_to_taker: u64,
+) -> Result<()> {
     let numerator1 = u128::from(input_to_send_to_taker) * u128::from(order.expected_output_amount);
     let denominator1 = u128::from(order.initial_input_amount);
     let div_ceil_result1 = (numerator1 + denominator1 - 1) / denominator1;
@@ -83,4 +103,95 @@ pub(super) fn validate_stop_loss_price(
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::state::OrderType;
+
+    fn price(price: i64, exponent: i32) -> Price {
+        Price {
+            price,
+            conf: 0,
+            exponent,
+            publish_time: 0,
+        }
+    }
+
+    fn global_config(sl_max_upward_deviation_bps: u16) -> GlobalConfig {
+        GlobalConfig {
+            sl_max_upward_deviation_bps,
+            ..GlobalConfig::default()
+        }
+    }
+
+    fn stop_loss_order() -> Order {
+        Order {
+            initial_input_amount: 1_000,
+            expected_output_amount: 2_000,
+            order_type: OrderType::LimitSL as u8,
+            ..Order::default()
+        }
+    }
+
+    #[test]
+    fn validate_stop_loss_price_accepts_balanced_prices() {
+        let result = validate_stop_loss_price_from_prices(
+            &global_config(0),
+            &stop_loss_order(),
+            price(200, -2),
+            price(100, -2),
+            6,
+            6,
+            500,
+        );
+
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn validate_stop_loss_price_accepts_configured_upward_deviation() {
+        let result = validate_stop_loss_price_from_prices(
+            &global_config(2_500),
+            &stop_loss_order(),
+            price(250, -2),
+            price(100, -2),
+            6,
+            6,
+            500,
+        );
+
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn validate_stop_loss_price_rejects_excessive_input_value() {
+        let result = validate_stop_loss_price_from_prices(
+            &global_config(0),
+            &stop_loss_order(),
+            price(201, -2),
+            price(100, -2),
+            6,
+            6,
+            500,
+        );
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn validate_stop_loss_price_scales_output_for_input_decimals() {
+        let result = validate_stop_loss_price_from_prices(
+            &global_config(0),
+            &stop_loss_order(),
+            price(2_000, -2),
+            price(100, -2),
+            9,
+            6,
+            500,
+        );
+
+        assert!(result.is_ok());
+    }
 }
