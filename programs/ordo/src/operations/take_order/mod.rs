@@ -3,7 +3,7 @@ use pyth_solana_receiver_sdk::price_update::PriceUpdateV2;
 use solana_program::clock;
 
 use crate::{
-    state::{GlobalConfig, OraclePoolsState, Order, ExecuteOrderEffects},
+    state::{ExecuteOrderEffects, GlobalConfig, OraclePoolsState, Order},
     OrdoError,
 };
 

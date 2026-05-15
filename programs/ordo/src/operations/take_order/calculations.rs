@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 
 use crate::{
     dbg_msg,
-    state::{GlobalConfig, Order, OrderStatus, OrderType, ExecuteOrderEffects},
+    state::{ExecuteOrderEffects, GlobalConfig, Order, OrderStatus, OrderType},
     utils::fraction::{Fraction, FractionExtra},
     OrdoError,
 };
