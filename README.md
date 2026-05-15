@@ -1,6 +1,6 @@
-# LIMO (Liquidity Integration & Matching Orders) — Solana Program
+# ORDO — Solana Program
 
-This directory contains the **LIMO** on-chain program (Anchor/Solana).
+This directory contains the **ORDO** on-chain program (Anchor/Solana).
 
 ## Attribution
 
@@ -10,15 +10,15 @@ This contract was built **based on** the upstream `kamino/ordo` program by Kamin
 
 ## Program ID
 
-- **Program ID**: `82qR3ftARSeXPBg9wnVrsLsAepfvimBUCPdNuiV9unhV` (see `programs/ordo/src/lib.rs`)
+- **Program ID**: `EfsKVSxQxwoR9NpZfjgWuuwpbbF14BQgrh3rt4kAs181` (see `programs/ordo/src/lib.rs`)
 - **Deployments**:
-  - **Mainnet-beta**: deployed at the same Program ID
-  - **Devnet**: deployed at the same Program ID
+  - **Mainnet-beta**: `EfsKVSxQxwoR9NpZfjgWuuwpbbF14BQgrh3rt4kAs181`
+  - **Devnet**: `3kcDAfBY5Q5cKJMwWKX3DRqGg3JwQ7Tntkh8faYF5yA5`
   - **Localnet / Surfpool localnet**: deploy the program to your local cluster (e.g. `anchor deploy`) before running tests
 
 ## What it does (high level)
 
-LIMO is an order-based swap/matching program that lets a **maker** create an order to swap `input_mint` for `output_mint`, and a **taker** fill (take) the order under configurable constraints. The program maintains shared configuration (global config), token vaults, and optional oracle pools used for price / staleness checks.
+ORDO is an order-based swap/matching program that lets a **maker** create an order to swap `input_mint` for `output_mint`, and a **taker** fill (take) the order under configurable constraints. The program maintains shared configuration (global config), token vaults, and optional oracle pools used for price / staleness checks.
 
 ---
 
