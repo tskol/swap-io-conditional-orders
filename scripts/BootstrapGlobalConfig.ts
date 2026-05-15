@@ -1,28 +1,13 @@
-import * as anchor from "@coral-xyz/anchor";
-import { web3 } from "@coral-xyz/anchor";
-import { OrdoHelper } from "../tests/helpers/ordo";
-import { SCRIPT_COMMITMENT } from "./config";
+import { confirmSignature, createScriptContext } from "./runtime";
 
 async function main() {
-    const envProvider = anchor.AnchorProvider.env();
-    const connection = new web3.Connection(envProvider.connection.rpcEndpoint, { commitment: SCRIPT_COMMITMENT });
-    const provider = new anchor.AnchorProvider(connection, envProvider.wallet, {
-        commitment: SCRIPT_COMMITMENT,
-        preflightCommitment: SCRIPT_COMMITMENT,
-    });
-    anchor.setProvider(provider);
-
-    const user = provider.wallet as anchor.Wallet;
-    console.log("Execute script from wallet: ", user.publicKey.toBase58());
-
-    const ordoHelper = new OrdoHelper(provider);
+    const { connection, wallet, ordoHelper } = createScriptContext();
+    console.log("Execute script from wallet: ", wallet.publicKey.toBase58());
 
     const { signature, globalConfig } = await ordoHelper.initializeGlobalConfig({
-        payer: user,
+        payer: wallet,
     });
-
-    const blockhash = await connection.getLatestBlockhash(SCRIPT_COMMITMENT);
-    await connection.confirmTransaction({ signature, ...blockhash }, SCRIPT_COMMITMENT);
+    await confirmSignature(connection, signature);
 
     console.log("Global config initialized: ", globalConfig.toBase58());
 }
