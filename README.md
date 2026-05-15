@@ -69,7 +69,11 @@ Anchor script aliases are defined in `Anchor.toml`:
 
 ## Environment
 
-See [.env.example](./.env.example) for script variables.
+See:
+
+- [.env.example](./.env.example)
+- [.env.devnet.example](./.env.devnet.example)
+- [.env.mainnet.example](./.env.mainnet.example)
 
 ## Security
 
