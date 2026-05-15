@@ -16,8 +16,12 @@ import {
   OrderType,
   OrdoError,
   UpdateGlobalConfigMode,
-  UpdateOrderMode,
 } from "./support/ordo-constants";
+import {
+  calcProRataMinOutputAmount,
+  createExecutableChildOrderSet,
+  ensureChildFlowTokenAccounts,
+} from "./support/ordo/child-flow";
 
 describe("Type B Child Limit Orders", () => {
   const { connection, provider } = createFlowProvider();
@@ -240,93 +244,32 @@ describe("Type B Child Limit Orders", () => {
     const slOutputAmount = new BN(80000000000);
     const activeDurationSeconds = new BN(10);
 
-    async function calcMinOutputAmount(
-      inputAmount: BN,
-      order: web3.PublicKey,
-    ): Promise<BN> {
-      const orderAccount = await ordoHelper.getOrderAccount(order);
-      const numerator = new BN(inputAmount).mul(
-        orderAccount.expectedOutputAmount,
-      );
-      const denominator = orderAccount.initialInputAmount;
-      return numerator.add(denominator).sub(new BN(1)).div(denominator);
-    }
-
     before(async () => {
-      await spl.createAssociatedTokenAccountIdempotent(
-        provider.connection,
+      await ensureChildFlowTokenAccounts({
+        connection: provider.connection,
         taker,
-        inputMint,
-        taker.publicKey,
-      );
-
-      await spl.createAssociatedTokenAccountIdempotent(
-        provider.connection,
         maker,
+        inputMint,
         outputMint,
-        maker.publicKey,
-      );
+      });
     });
 
     beforeEach(async () => {
-      const {
-        signature,
-        order: orderPubkey,
-        tpOrder: tpOrderPubkey,
-        slOrder: slOrderPubkey,
-      } = await ordoHelper.createOrder({
+      const childOrders = await createExecutableChildOrderSet({
+        ordoHelper,
         maker: makerWallet,
-        inputMint: inputMint,
-        outputMint: outputMint,
+        taker,
+        inputMint,
+        outputMint,
         inputAmount: orderInputAmount,
         outputAmount: orderOutputAmount,
-        orderType: OrderType.LimitParent,
-        tpOutputAmount: tpOutputAmount,
-        slOutputAmount: slOutputAmount,
-        activeDurationSeconds: activeDurationSeconds,
+        tpOutputAmount,
+        slOutputAmount,
+        activeDurationSeconds,
       });
-      order = orderPubkey;
-      tpOrder = tpOrderPubkey;
-      slOrder = slOrderPubkey;
-
-      await ordoHelper.updateOrder({
-        maker: makerWallet,
-        order: order,
-        mode: UpdateOrderMode.UpdatePermissionless,
-        value: new BN(1).toBuffer(),
-      });
-      await ordoHelper.updateOrder({
-        maker: makerWallet,
-        order: order,
-        mode: UpdateOrderMode.UpdateCounterparty,
-        value: taker.publicKey.toBuffer(),
-      });
-
-      await ordoHelper.updateOrder({
-        maker: makerWallet,
-        order: tpOrder,
-        mode: UpdateOrderMode.UpdatePermissionless,
-        value: new BN(1).toBuffer(),
-      });
-      await ordoHelper.updateOrder({
-        maker: makerWallet,
-        order: tpOrder,
-        mode: UpdateOrderMode.UpdateCounterparty,
-        value: taker.publicKey.toBuffer(),
-      });
-
-      await ordoHelper.updateOrder({
-        maker: makerWallet,
-        order: slOrder,
-        mode: UpdateOrderMode.UpdatePermissionless,
-        value: new BN(1).toBuffer(),
-      });
-      await ordoHelper.updateOrder({
-        maker: makerWallet,
-        order: slOrder,
-        mode: UpdateOrderMode.UpdateCounterparty,
-        value: taker.publicKey.toBuffer(),
-      });
+      order = childOrders.order;
+      tpOrder = childOrders.tpOrder;
+      slOrder = childOrders.slOrder;
     });
 
     it("TP fill at exact TP price", async () => {
@@ -334,15 +277,20 @@ describe("Type B Child Limit Orders", () => {
         taker: takerWallet,
         order: order,
         inputAmount: orderInputAmount,
-        minOutputAmount: await calcMinOutputAmount(orderInputAmount, order),
+        minOutputAmount: await calcProRataMinOutputAmount({
+          ordoHelper,
+          inputAmount: orderInputAmount,
+          order,
+        }),
         tipAmountPermissionlessTaking: new BN(0),
       });
 
       const fillInputAmount = orderOutputAmount;
-      const fillMinOutputAmount = await calcMinOutputAmount(
-        fillInputAmount,
-        tpOrder,
-      );
+      const fillMinOutputAmount = await calcProRataMinOutputAmount({
+        ordoHelper,
+        inputAmount: fillInputAmount,
+        order: tpOrder,
+      });
 
       const makerInputAta = spl.getAssociatedTokenAddressSync(
         inputMint,
@@ -495,13 +443,21 @@ describe("Type B Child Limit Orders", () => {
         taker: takerWallet,
         order: order,
         inputAmount: orderInputAmount,
-        minOutputAmount: await calcMinOutputAmount(orderInputAmount, order),
+        minOutputAmount: await calcProRataMinOutputAmount({
+          ordoHelper,
+          inputAmount: orderInputAmount,
+          order,
+        }),
         tipAmountPermissionlessTaking: new BN(0),
       });
 
       const fillInputAmount = orderOutputAmount;
       const fillMinOutputAmount = (
-        await calcMinOutputAmount(fillInputAmount, tpOrder)
+        await calcProRataMinOutputAmount({
+          ordoHelper,
+          inputAmount: fillInputAmount,
+          order: tpOrder,
+        })
       ).add(new BN(100000));
 
       const makerInputAta = spl.getAssociatedTokenAddressSync(
@@ -655,13 +611,21 @@ describe("Type B Child Limit Orders", () => {
         taker: takerWallet,
         order: order,
         inputAmount: orderInputAmount,
-        minOutputAmount: await calcMinOutputAmount(orderInputAmount, order),
+        minOutputAmount: await calcProRataMinOutputAmount({
+          ordoHelper,
+          inputAmount: orderInputAmount,
+          order: order,
+        }),
         tipAmountPermissionlessTaking: new BN(0),
       });
 
       const fillInputAmount = orderOutputAmount;
       const fillMinOutputAmount = (
-        await calcMinOutputAmount(fillInputAmount, tpOrder)
+        await calcProRataMinOutputAmount({
+          ordoHelper,
+          inputAmount: fillInputAmount,
+          order: tpOrder,
+        })
       ).sub(new BN(1));
 
       await expectRejects(
@@ -681,20 +645,26 @@ describe("Type B Child Limit Orders", () => {
         taker: takerWallet,
         order: order,
         inputAmount: orderInputAmount.div(new BN(2)),
-        minOutputAmount: await calcMinOutputAmount(
-          orderInputAmount.div(new BN(2)),
+        minOutputAmount: await calcProRataMinOutputAmount({
+          ordoHelper,
+          inputAmount: orderInputAmount.div(new BN(2)),
           order,
-        ),
+        }),
         tipAmountPermissionlessTaking: new BN(0),
       });
 
       const fillInputAmount = (
-        await calcMinOutputAmount(orderInputAmount.div(new BN(2)), order)
+        await calcProRataMinOutputAmount({
+          ordoHelper,
+          inputAmount: orderInputAmount.div(new BN(2)),
+          order,
+        })
       ).add(new BN(1));
-      const fillMinOutputAmount = await calcMinOutputAmount(
-        fillInputAmount,
-        tpOrder,
-      );
+      const fillMinOutputAmount = await calcProRataMinOutputAmount({
+        ordoHelper,
+        inputAmount: fillInputAmount,
+        order: tpOrder,
+      });
 
       await expectRejects(
         ordoHelper.takeOrder({
@@ -719,10 +689,11 @@ describe("Type B Child Limit Orders", () => {
       await new Promise((resolve) => setTimeout(resolve, waitMs));
 
       const fillInputAmount = orderOutputAmount;
-      const fillMinOutputAmount = await calcMinOutputAmount(
-        fillInputAmount,
-        tpOrder,
-      );
+      const fillMinOutputAmount = await calcProRataMinOutputAmount({
+        ordoHelper,
+        inputAmount: fillInputAmount,
+        order: tpOrder,
+      });
 
       await expectRejects(
         ordoHelper.takeOrder({
@@ -748,15 +719,20 @@ describe("Type B Child Limit Orders", () => {
         taker: takerWallet,
         order: order,
         inputAmount: orderInputAmount,
-        minOutputAmount: await calcMinOutputAmount(orderInputAmount, order),
+        minOutputAmount: await calcProRataMinOutputAmount({
+          ordoHelper,
+          inputAmount: orderInputAmount,
+          order,
+        }),
         tipAmountPermissionlessTaking: new BN(0),
       });
 
       const fillInputAmount = orderOutputAmount;
-      const fillMinOutputAmount = await calcMinOutputAmount(
-        fillInputAmount,
-        tpOrder,
-      );
+      const fillMinOutputAmount = await calcProRataMinOutputAmount({
+        ordoHelper,
+        inputAmount: fillInputAmount,
+        order: tpOrder,
+      });
 
       const makerInputAta = spl.getAssociatedTokenAddressSync(
         inputMint,
@@ -927,93 +903,32 @@ describe("Type B Child Limit Orders", () => {
     const slOutputAmount = new BN(90000000000);
     const activeDurationSeconds = new BN(10);
 
-    async function calcMinOutputAmount(
-      inputAmount: BN,
-      order: web3.PublicKey,
-    ): Promise<BN> {
-      const orderAccount = await ordoHelper.getOrderAccount(order);
-      const numerator = new BN(inputAmount).mul(
-        orderAccount.expectedOutputAmount,
-      );
-      const denominator = orderAccount.initialInputAmount;
-      return numerator.add(denominator).sub(new BN(1)).div(denominator);
-    }
-
     before(async () => {
-      await spl.createAssociatedTokenAccountIdempotent(
-        provider.connection,
+      await ensureChildFlowTokenAccounts({
+        connection: provider.connection,
         taker,
-        inputMint,
-        taker.publicKey,
-      );
-
-      await spl.createAssociatedTokenAccountIdempotent(
-        provider.connection,
         maker,
+        inputMint,
         outputMint,
-        maker.publicKey,
-      );
+      });
     });
 
     beforeEach(async () => {
-      const {
-        signature,
-        order: orderPubkey,
-        tpOrder: tpOrderPubkey,
-        slOrder: slOrderPubkey,
-      } = await ordoHelper.createOrder({
+      const childOrders = await createExecutableChildOrderSet({
+        ordoHelper,
         maker: makerWallet,
-        inputMint: inputMint,
-        outputMint: outputMint,
+        taker,
+        inputMint,
+        outputMint,
         inputAmount: orderInputAmount,
         outputAmount: orderOutputAmount,
-        orderType: OrderType.LimitParent,
-        tpOutputAmount: tpOutputAmount,
-        slOutputAmount: slOutputAmount,
-        activeDurationSeconds: activeDurationSeconds,
+        tpOutputAmount,
+        slOutputAmount,
+        activeDurationSeconds,
       });
-      order = orderPubkey;
-      tpOrder = tpOrderPubkey;
-      slOrder = slOrderPubkey;
-
-      await ordoHelper.updateOrder({
-        maker: makerWallet,
-        order: order,
-        mode: UpdateOrderMode.UpdatePermissionless,
-        value: new BN(1).toBuffer(),
-      });
-      await ordoHelper.updateOrder({
-        maker: makerWallet,
-        order: order,
-        mode: UpdateOrderMode.UpdateCounterparty,
-        value: taker.publicKey.toBuffer(),
-      });
-
-      await ordoHelper.updateOrder({
-        maker: makerWallet,
-        order: tpOrder,
-        mode: UpdateOrderMode.UpdatePermissionless,
-        value: new BN(1).toBuffer(),
-      });
-      await ordoHelper.updateOrder({
-        maker: makerWallet,
-        order: tpOrder,
-        mode: UpdateOrderMode.UpdateCounterparty,
-        value: taker.publicKey.toBuffer(),
-      });
-
-      await ordoHelper.updateOrder({
-        maker: makerWallet,
-        order: slOrder,
-        mode: UpdateOrderMode.UpdatePermissionless,
-        value: new BN(1).toBuffer(),
-      });
-      await ordoHelper.updateOrder({
-        maker: makerWallet,
-        order: slOrder,
-        mode: UpdateOrderMode.UpdateCounterparty,
-        value: taker.publicKey.toBuffer(),
-      });
+      order = childOrders.order;
+      tpOrder = childOrders.tpOrder;
+      slOrder = childOrders.slOrder;
     });
 
     it("SL executes inside SL band", async () => {
@@ -1021,15 +936,20 @@ describe("Type B Child Limit Orders", () => {
         taker: takerWallet,
         order: order,
         inputAmount: orderInputAmount,
-        minOutputAmount: await calcMinOutputAmount(orderInputAmount, order),
+        minOutputAmount: await calcProRataMinOutputAmount({
+          ordoHelper,
+          inputAmount: orderInputAmount,
+          order,
+        }),
         tipAmountPermissionlessTaking: new BN(0),
       });
 
       const fillInputAmount = orderOutputAmount;
-      const fillMinOutputAmount = await calcMinOutputAmount(
-        fillInputAmount,
-        slOrder,
-      );
+      const fillMinOutputAmount = await calcProRataMinOutputAmount({
+        ordoHelper,
+        inputAmount: fillInputAmount,
+        order: slOrder,
+      });
 
       // It is impossible to change the price in Oracle,
       // so for the test we will change SlMaxUpwardDeviationBps
@@ -1192,15 +1112,20 @@ describe("Type B Child Limit Orders", () => {
         taker: takerWallet,
         order: order,
         inputAmount: orderInputAmount,
-        minOutputAmount: await calcMinOutputAmount(orderInputAmount, order),
+        minOutputAmount: await calcProRataMinOutputAmount({
+          ordoHelper,
+          inputAmount: orderInputAmount,
+          order,
+        }),
         tipAmountPermissionlessTaking: new BN(0),
       });
 
       const fillInputAmount = orderOutputAmount;
-      const fillMinOutputAmount = await calcMinOutputAmount(
-        fillInputAmount,
-        slOrder,
-      );
+      const fillMinOutputAmount = await calcProRataMinOutputAmount({
+        ordoHelper,
+        inputAmount: fillInputAmount,
+        order: slOrder,
+      });
 
       // It is impossible to change the price in Oracle,
       // so for the test we will change SlMaxUpwardDeviationBps
@@ -1229,13 +1154,21 @@ describe("Type B Child Limit Orders", () => {
         taker: takerWallet,
         order: order,
         inputAmount: orderInputAmount,
-        minOutputAmount: await calcMinOutputAmount(orderInputAmount, order),
+        minOutputAmount: await calcProRataMinOutputAmount({
+          ordoHelper,
+          inputAmount: orderInputAmount,
+          order,
+        }),
         tipAmountPermissionlessTaking: new BN(0),
       });
 
       const fillInputAmount = orderOutputAmount;
       const fillMinOutputAmount = (
-        await calcMinOutputAmount(fillInputAmount, slOrder)
+        await calcProRataMinOutputAmount({
+          ordoHelper,
+          inputAmount: fillInputAmount,
+          order: slOrder,
+        })
       ).sub(new BN(1));
 
       // It is impossible to change the price in Oracle,
@@ -1274,10 +1207,11 @@ describe("Type B Child Limit Orders", () => {
       await new Promise((resolve) => setTimeout(resolve, waitMs));
 
       const fillInputAmount = orderOutputAmount;
-      const fillMinOutputAmount = await calcMinOutputAmount(
-        fillInputAmount,
-        slOrder,
-      );
+      const fillMinOutputAmount = await calcProRataMinOutputAmount({
+        ordoHelper,
+        inputAmount: fillInputAmount,
+        order: slOrder,
+      });
 
       await expectRejects(
         ordoHelper.takeOrder({
@@ -1303,15 +1237,20 @@ describe("Type B Child Limit Orders", () => {
         taker: takerWallet,
         order: order,
         inputAmount: orderInputAmount,
-        minOutputAmount: await calcMinOutputAmount(orderInputAmount, order),
+        minOutputAmount: await calcProRataMinOutputAmount({
+          ordoHelper,
+          inputAmount: orderInputAmount,
+          order,
+        }),
         tipAmountPermissionlessTaking: new BN(0),
       });
 
       const fillInputAmount = orderOutputAmount;
-      const fillMinOutputAmount = await calcMinOutputAmount(
-        fillInputAmount,
-        slOrder,
-      );
+      const fillMinOutputAmount = await calcProRataMinOutputAmount({
+        ordoHelper,
+        inputAmount: fillInputAmount,
+        order: slOrder,
+      });
 
       // It is impossible to change the price in Oracle,
       // so for the test we will change SlMaxUpwardDeviationBps
@@ -1491,92 +1430,31 @@ describe("Type B Child Limit Orders", () => {
     const tpOutputAmount = new BN(120000000000);
     const slOutputAmount = new BN(90000000000);
 
-    async function calcMinOutputAmount(
-      inputAmount: BN,
-      order: web3.PublicKey,
-    ): Promise<BN> {
-      const orderAccount = await ordoHelper.getOrderAccount(order);
-      const numerator = new BN(inputAmount).mul(
-        orderAccount.expectedOutputAmount,
-      );
-      const denominator = orderAccount.initialInputAmount;
-      return numerator.add(denominator).sub(new BN(1)).div(denominator);
-    }
-
     before(async () => {
-      await spl.createAssociatedTokenAccountIdempotent(
-        provider.connection,
+      await ensureChildFlowTokenAccounts({
+        connection: provider.connection,
         taker,
-        inputMint,
-        taker.publicKey,
-      );
-
-      await spl.createAssociatedTokenAccountIdempotent(
-        provider.connection,
         maker,
+        inputMint,
         outputMint,
-        maker.publicKey,
-      );
+      });
     });
 
     beforeEach(async () => {
-      const {
-        signature,
-        order: orderPubkey,
-        tpOrder: tpOrderPubkey,
-        slOrder: slOrderPubkey,
-      } = await ordoHelper.createOrder({
+      const childOrders = await createExecutableChildOrderSet({
+        ordoHelper,
         maker: makerWallet,
-        inputMint: inputMint,
-        outputMint: outputMint,
+        taker,
+        inputMint,
+        outputMint,
         inputAmount: orderInputAmount,
         outputAmount: orderOutputAmount,
-        orderType: OrderType.LimitParent,
-        tpOutputAmount: tpOutputAmount,
-        slOutputAmount: slOutputAmount,
+        tpOutputAmount,
+        slOutputAmount,
       });
-      order = orderPubkey;
-      tpOrder = tpOrderPubkey;
-      slOrder = slOrderPubkey;
-
-      await ordoHelper.updateOrder({
-        maker: makerWallet,
-        order: order,
-        mode: UpdateOrderMode.UpdatePermissionless,
-        value: new BN(1).toBuffer(),
-      });
-      await ordoHelper.updateOrder({
-        maker: makerWallet,
-        order: order,
-        mode: UpdateOrderMode.UpdateCounterparty,
-        value: taker.publicKey.toBuffer(),
-      });
-
-      await ordoHelper.updateOrder({
-        maker: makerWallet,
-        order: tpOrder,
-        mode: UpdateOrderMode.UpdatePermissionless,
-        value: new BN(1).toBuffer(),
-      });
-      await ordoHelper.updateOrder({
-        maker: makerWallet,
-        order: tpOrder,
-        mode: UpdateOrderMode.UpdateCounterparty,
-        value: taker.publicKey.toBuffer(),
-      });
-
-      await ordoHelper.updateOrder({
-        maker: makerWallet,
-        order: slOrder,
-        mode: UpdateOrderMode.UpdatePermissionless,
-        value: new BN(1).toBuffer(),
-      });
-      await ordoHelper.updateOrder({
-        maker: makerWallet,
-        order: slOrder,
-        mode: UpdateOrderMode.UpdateCounterparty,
-        value: taker.publicKey.toBuffer(),
-      });
+      order = childOrders.order;
+      tpOrder = childOrders.tpOrder;
+      slOrder = childOrders.slOrder;
     });
 
     it("TP realized input tracked correctly", async () => {
@@ -1584,15 +1462,20 @@ describe("Type B Child Limit Orders", () => {
         taker: takerWallet,
         order: order,
         inputAmount: orderInputAmount,
-        minOutputAmount: await calcMinOutputAmount(orderInputAmount, order),
+        minOutputAmount: await calcProRataMinOutputAmount({
+          ordoHelper,
+          inputAmount: orderInputAmount,
+          order,
+        }),
         tipAmountPermissionlessTaking: new BN(0),
       });
 
       const fillInputAmount = orderOutputAmount.div(new BN(10));
-      const fillMinOutputAmount = await calcMinOutputAmount(
-        fillInputAmount,
-        tpOrder,
-      );
+      const fillMinOutputAmount = await calcProRataMinOutputAmount({
+        ordoHelper,
+        inputAmount: fillInputAmount,
+        order: tpOrder,
+      });
 
       const { signatures: tpSignatures } = await ordoHelper.takeOrder({
         taker: takerWallet,
@@ -1652,7 +1535,11 @@ describe("Type B Child Limit Orders", () => {
         taker: takerWallet,
         order: order,
         inputAmount: orderInputAmount,
-        minOutputAmount: await calcMinOutputAmount(orderInputAmount, order),
+        minOutputAmount: await calcProRataMinOutputAmount({
+          ordoHelper,
+          inputAmount: orderInputAmount,
+          order,
+        }),
         tipAmountPermissionlessTaking: new BN(0),
       });
 
@@ -1667,10 +1554,11 @@ describe("Type B Child Limit Orders", () => {
       });
 
       const fillInputAmount = orderOutputAmount.div(new BN(10));
-      const fillMinOutputAmount = await calcMinOutputAmount(
-        fillInputAmount,
-        slOrder,
-      );
+      const fillMinOutputAmount = await calcProRataMinOutputAmount({
+        ordoHelper,
+        inputAmount: fillInputAmount,
+        order: slOrder,
+      });
 
       const { signatures: tpSignatures } = await ordoHelper.takeOrder({
         taker: takerWallet,
