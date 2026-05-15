@@ -1,6 +1,6 @@
 import * as anchor from "@coral-xyz/anchor";
 import { web3 } from "@coral-xyz/anchor";
-import { LimoHelper } from "../tests/helpers/limo";
+import { OrdoHelper } from "../tests/helpers/ordo";
 
 const COMMITMENT: web3.Commitment = 'confirmed';
 
@@ -16,9 +16,9 @@ async function main() {
     const user = provider.wallet as anchor.Wallet;
     console.log("Execute script from wallet: ", user.publicKey.toBase58());
 
-    const limoHelper = new LimoHelper(provider);
+    const ordoHelper = new OrdoHelper(provider);
 
-    const { signature, globalConfig } = await limoHelper.initializeGlobalConfig({
+    const { signature, globalConfig } = await ordoHelper.initializeGlobalConfig({
         payer: user,
     });
 

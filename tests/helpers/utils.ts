@@ -47,7 +47,7 @@ export async function findLargestTokenAccount(args: {
   return largestTokenAccount;
 }
 
-export function generateRandomLimoAccounts() {
+export function generateRandomOrdoAccounts() {
   const adminKeypair = web3.Keypair.generate();
   const adminWallet = new anchor.Wallet(adminKeypair);
   const admin = adminKeypair.publicKey;

@@ -3,12 +3,12 @@ import { web3 } from "@coral-xyz/anchor";
 import {
   PublicKey,
 } from "@solana/web3.js";
-import { LimoHelper } from "../tests/helpers/limo";
+import { OrdoHelper } from "../tests/helpers/ordo";
 
 const COMMITMENT: web3.Commitment = 'confirmed';
 
-const GLOBAL_CONFIG = new PublicKey("");
-const MINT = new PublicKey("");
+const GLOBAL_CONFIG = new PublicKey("G5t5rvSjYPFfNWKjUvJ5eVU9xrb4SdhSkkiBFQRfUBNR");
+const MINT = new PublicKey( "5WsTaQwxNhXNyCvzTeGxyYynGL1nmGwPQQCuXwCtGimn"); //spl-token create-token
 
 async function main() {
     const envProvider = anchor.AnchorProvider.env();
@@ -22,10 +22,10 @@ async function main() {
     const user = provider.wallet as anchor.Wallet;
     console.log("Execute script from wallet: ", user.publicKey.toBase58());
 
-    const limoHelper = new LimoHelper(provider);
-    limoHelper.setGlobalConfig(GLOBAL_CONFIG);
+    const ordoHelper = new OrdoHelper(provider);
+    ordoHelper.setGlobalConfig(GLOBAL_CONFIG);
 
-    const { signature, vault, feeVault } = await limoHelper.initializeVault({
+    const { signature, vault, feeVault } = await ordoHelper.initializeVault({
         payer: user,
         mint: MINT
     });

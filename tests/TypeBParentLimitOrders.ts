@@ -3,17 +3,17 @@ import * as spl from "@solana/spl-token";
 import { web3, BN } from "@coral-xyz/anchor";
 import { expect } from "chai";
 import {
-  LimoHelper,
-} from "./helpers/limo";
+  OrdoHelper,
+} from "./helpers/ordo";
 import {
   airdrop,
   createMintWithInitialBalance,
   expectRejects,
-  generateRandomLimoAccounts,
+  generateRandomOrdoAccounts,
 } from "./helpers/utils";
-import { OrderStatus, OrderType, LimoError, UpdateGlobalConfigMode, UpdateOrderMode } from "./helpers/constants";
-// import { LimoHelper } from "./helpers/limo.js";
-// import { airdrop, generateRandomLimoAccounts } from "./helpers/utils.js";
+import { OrderStatus, OrderType, OrdoError, UpdateGlobalConfigMode, UpdateOrderMode } from "./helpers/constants";
+// import { OrdoHelper } from "./helpers/ordo.js";
+// import { airdrop, generateRandomOrdoAccounts } from "./helpers/utils.js";
 
 export const STABLE_PRICE_FEED =
   "0x8b1e8e689fbb95ece35155a8b42cb9f1b14208a2f6507866a9a90e8dc955289a";
@@ -40,7 +40,7 @@ describe("Type B Parent Limit Orders", () => {
     const tokenCreator = web3.Keypair.generate();
     const tokenCreatorWallet = new anchor.Wallet(tokenCreator);
 
-    const limoHelper = new LimoHelper(provider);
+    const ordoHelper = new OrdoHelper(provider);
 
     let inputMint: web3.PublicKey;
     let outputMint: web3.PublicKey;
@@ -81,25 +81,25 @@ describe("Type B Parent Limit Orders", () => {
         inputMint = inputMintPubkey;
         outputMint = outputMintPubkey;
 
-        await limoHelper.initializeGlobalConfig({
+        await ordoHelper.initializeGlobalConfig({
             payer: payerWallet,
         });
 
-        await limoHelper.initializeVault({
+        await ordoHelper.initializeVault({
             payer: payerWallet,
             mint: inputMint,
         });
-        await limoHelper.initializeVault({
+        await ordoHelper.initializeVault({
             payer: payerWallet,
             mint: outputMint,
         });
 
-        await limoHelper.initializeOraclePool({
+        await ordoHelper.initializeOraclePool({
             payer: payerWallet,
             mint: inputMint,
             feedId: STABLE_PRICE_FEED,
         });
-        await limoHelper.initializeOraclePool({
+        await ordoHelper.initializeOraclePool({
             payer: payerWallet,
             mint: outputMint,
             feedId: STABLE_PRICE_FEED,
@@ -113,7 +113,7 @@ describe("Type B Parent Limit Orders", () => {
             const tpOutputAmount = new BN(220000000000);
             const slOutputAmount = new BN(180000000000);
 
-            const { vault: inputVaultAta } = await limoHelper.getVault(inputMint);
+            const { vault: inputVaultAta } = await ordoHelper.getVault(inputMint);
             const makerInputAta = spl.getAssociatedTokenAddressSync(
                 inputMint,
                 maker.publicKey
@@ -122,7 +122,7 @@ describe("Type B Parent Limit Orders", () => {
             const makerInputAtaBalanceBefore = await provider.connection.getTokenAccountBalance(makerInputAta);
             const inputVaultAtaBalanceBefore = await provider.connection.getTokenAccountBalance(inputVaultAta);
 
-            const { signature, order, tpOrder, slOrder } = await limoHelper.createOrder({
+            const { signature, order, tpOrder, slOrder } = await ordoHelper.createOrder({
                 maker: makerWallet,
                 inputMint: inputMint,
                 outputMint: outputMint,
@@ -136,10 +136,10 @@ describe("Type B Parent Limit Orders", () => {
             const makerInputAtaBalanceAfter = await provider.connection.getTokenAccountBalance(makerInputAta);
             const inputVaultAtaBalanceAfter = await provider.connection.getTokenAccountBalance(inputVaultAta);
 
-            const orderAccount = await limoHelper.getOrderAccount(order);
-            const tpOrderAccount = await limoHelper.getOrderAccount(tpOrder);
-            const slOrderAccount = await limoHelper.getOrderAccount(slOrder);
-            const globalConfig = limoHelper.getGlobalConfig();
+            const orderAccount = await ordoHelper.getOrderAccount(order);
+            const tpOrderAccount = await ordoHelper.getOrderAccount(tpOrder);
+            const slOrderAccount = await ordoHelper.getOrderAccount(slOrder);
+            const globalConfig = ordoHelper.getGlobalConfig();
             const inputTokenProgram = (await provider.connection.getAccountInfo(inputMint))?.owner;
             const outputTokenProgram = (await provider.connection.getAccountInfo(outputMint))?.owner;
 
@@ -212,7 +212,7 @@ describe("Type B Parent Limit Orders", () => {
             const tpOutputAmount = new BN(0);
             const slOutputAmount = new BN(0);
 
-            await expectRejects(limoHelper.createOrder({
+            await expectRejects(ordoHelper.createOrder({
                 maker: makerWallet,
                 inputMint: inputMint,
                 outputMint: outputMint,
@@ -221,7 +221,7 @@ describe("Type B Parent Limit Orders", () => {
                 orderType: OrderType.LimitParent,
                 tpOutputAmount: tpOutputAmount,
                 slOutputAmount: slOutputAmount,
-            }), LimoError.OrderParametersInvalid);
+            }), OrdoError.OrderParametersInvalid);
         });
 
         it("Should reject create order with tp less than sl output amounts", async () => {
@@ -230,7 +230,7 @@ describe("Type B Parent Limit Orders", () => {
             const tpOutputAmount = new BN(180000000000);
             const slOutputAmount = new BN(220000000000);
 
-            await expectRejects(limoHelper.createOrder({
+            await expectRejects(ordoHelper.createOrder({
                 maker: makerWallet,
                 inputMint: inputMint,
                 outputMint: outputMint,
@@ -239,7 +239,7 @@ describe("Type B Parent Limit Orders", () => {
                 orderType: OrderType.LimitParent,
                 tpOutputAmount: tpOutputAmount,
                 slOutputAmount: slOutputAmount,
-            }), LimoError.TPSLMinDistanceNotMet);
+            }), OrdoError.TPSLMinDistanceNotMet);
         });
 
         it.skip("Children start with zero inventory", async () => {});
@@ -254,7 +254,7 @@ describe("Type B Parent Limit Orders", () => {
         const activeDurationSeconds = new BN(10);
 
         async function calcMinOutputAmount(inputAmount: BN, order: web3.PublicKey): Promise<BN> {
-            const orderAccount = await limoHelper.getOrderAccount(order);
+            const orderAccount = await ordoHelper.getOrderAccount(order);
             const numerator = new BN(inputAmount).mul(orderAccount.expectedOutputAmount);
             const denominator = orderAccount.initialInputAmount;
             return numerator.add(denominator).sub(new BN(1)).div(denominator);
@@ -277,7 +277,7 @@ describe("Type B Parent Limit Orders", () => {
         });
 
         beforeEach(async () => {
-            const { signature, order: orderPubkey } = await limoHelper.createOrder({
+            const { signature, order: orderPubkey } = await ordoHelper.createOrder({
                 maker: makerWallet,
                 inputMint: inputMint,
                 outputMint: outputMint,
@@ -290,13 +290,13 @@ describe("Type B Parent Limit Orders", () => {
             });
             order = orderPubkey;
 
-            await limoHelper.updateOrder({
+            await ordoHelper.updateOrder({
                 maker: makerWallet,
                 order: order,
                 mode: UpdateOrderMode.UpdatePermissionless,
                 value: new BN(1).toBuffer(),
             });
-            await limoHelper.updateOrder({
+            await ordoHelper.updateOrder({
                 maker: makerWallet,
                 order: order,
                 mode: UpdateOrderMode.UpdateCounterparty,
@@ -324,8 +324,8 @@ describe("Type B Parent Limit Orders", () => {
                 outputMint,
                 taker.publicKey
             );
-            const { vault: inputVaultAta } = await limoHelper.getVault(inputMint);
-            const { vault: outputVaultAta } = await limoHelper.getVault(outputMint);
+            const { vault: inputVaultAta } = await ordoHelper.getVault(inputMint);
+            const { vault: outputVaultAta } = await ordoHelper.getVault(outputMint);
 
             const makerInputAtaBalanceBefore = await provider.connection.getTokenAccountBalance(makerInputAta);
             const takerInputAtaBalanceBefore = await provider.connection.getTokenAccountBalance(takerInputAta);
@@ -334,7 +334,7 @@ describe("Type B Parent Limit Orders", () => {
             const inputVaultAtaBalanceBefore = await provider.connection.getTokenAccountBalance(inputVaultAta);
             const outputVaultAtaBalanceBefore = await provider.connection.getTokenAccountBalance(outputVaultAta);
 
-            const { signatures } = await limoHelper.takeOrder({
+            const { signatures } = await ordoHelper.takeOrder({
                 taker: takerWallet,
                 order: order,
                 inputAmount: fillInputAmount,
@@ -349,7 +349,7 @@ describe("Type B Parent Limit Orders", () => {
             const inputVaultAtaBalanceAfter = await provider.connection.getTokenAccountBalance(inputVaultAta);
             const outputVaultAtaBalanceAfter = await provider.connection.getTokenAccountBalance(outputVaultAta);
 
-            const orderAccount = await limoHelper.getOrderAccount(order);
+            const orderAccount = await ordoHelper.getOrderAccount(order);
             const tx = await provider.connection.getParsedTransaction(signatures[0], { commitment: "confirmed", maxSupportedTransactionVersion: 0 });
 
             expect(orderAccount.remainingInputAmount.toString()).to.equal(orderInputAmount.sub(fillInputAmount).toString());
@@ -380,7 +380,7 @@ describe("Type B Parent Limit Orders", () => {
         it.skip("Surplus output bypasses child inventory", async () => {});
 
         it("Should reject fill order when order is expired", async () => {
-            await limoHelper.updateGlobalConfig({
+            await ordoHelper.updateGlobalConfig({
                 payer: payerWallet,
                 mode: UpdateGlobalConfigMode.UpdateAllowedTaker,
                 value: Array.from(taker.publicKey.toBuffer()),
@@ -392,18 +392,18 @@ describe("Type B Parent Limit Orders", () => {
             const fillInputAmount = orderInputAmount;
             const fillMinOutputAmount = await calcMinOutputAmount(fillInputAmount, order);
 
-            await expectRejects(limoHelper.takeOrder({
+            await expectRejects(ordoHelper.takeOrder({
                 taker: takerWallet,
                 order: order,
                 inputAmount: fillInputAmount,
                 minOutputAmount: fillMinOutputAmount,
                 tipAmountPermissionlessTaking: new BN(0),
-            }), LimoError.OrderExpired);
+            }), OrdoError.OrderExpired);
         });
 
         it("Should not get keeper fee", async () => {
             const keeperFeeBps = new BN(1000);
-            await limoHelper.updateGlobalConfig({
+            await ordoHelper.updateGlobalConfig({
                 payer: payerWallet,
                 mode: UpdateGlobalConfigMode.UpdateKeeperTakeFeeBps,
                 value: Array.from(keeperFeeBps.toArray("le", 2)),
@@ -428,8 +428,8 @@ describe("Type B Parent Limit Orders", () => {
                 outputMint,
                 taker.publicKey
             );
-            const { vault: inputVaultAta } = await limoHelper.getVault(inputMint);
-            const { vault: outputVaultAta } = await limoHelper.getVault(outputMint);
+            const { vault: inputVaultAta } = await ordoHelper.getVault(inputMint);
+            const { vault: outputVaultAta } = await ordoHelper.getVault(outputMint);
 
             const makerInputAtaBalanceBefore = await provider.connection.getTokenAccountBalance(makerInputAta);
             const takerInputAtaBalanceBefore = await provider.connection.getTokenAccountBalance(takerInputAta);
@@ -438,7 +438,7 @@ describe("Type B Parent Limit Orders", () => {
             const inputVaultAtaBalanceBefore = await provider.connection.getTokenAccountBalance(inputVaultAta);
             const outputVaultAtaBalanceBefore = await provider.connection.getTokenAccountBalance(outputVaultAta);
 
-            const { signatures } = await limoHelper.takeOrder({
+            const { signatures } = await ordoHelper.takeOrder({
                 taker: takerWallet,
                 order: order,
                 inputAmount: fillInputAmount,
@@ -453,7 +453,7 @@ describe("Type B Parent Limit Orders", () => {
             const inputVaultAtaBalanceAfter = await provider.connection.getTokenAccountBalance(inputVaultAta);
             const outputVaultAtaBalanceAfter = await provider.connection.getTokenAccountBalance(outputVaultAta);
 
-            const orderAccount = await limoHelper.getOrderAccount(order);
+            const orderAccount = await ordoHelper.getOrderAccount(order);
             const tx = await provider.connection.getParsedTransaction(signatures[0], { commitment: "confirmed", maxSupportedTransactionVersion: 0 });
 
             expect(orderAccount.remainingInputAmount.toString()).to.equal(orderInputAmount.sub(fillInputAmount).toString());
@@ -476,7 +476,7 @@ describe("Type B Parent Limit Orders", () => {
             const expectedOutputVaultAtaBalanceAfter = new BN(outputVaultAtaBalanceBefore.value.amount).add(fillMinOutputAmount).toString();
             expect(outputVaultAtaBalanceAfter.value.amount).to.equal(expectedOutputVaultAtaBalanceAfter);
 
-            await limoHelper.updateGlobalConfig({
+            await ordoHelper.updateGlobalConfig({
                 payer: payerWallet,
                 mode: UpdateGlobalConfigMode.UpdateKeeperTakeFeeBps,
                 value: Array.from(new BN(0).toArray("le", 2)),
@@ -494,7 +494,7 @@ describe("Type B Parent Limit Orders", () => {
         const slOutputAmount = new BN(80000000000);
 
         async function calcMinOutputAmount(inputAmount: BN, order: web3.PublicKey): Promise<BN> {
-            const orderAccount = await limoHelper.getOrderAccount(order);
+            const orderAccount = await ordoHelper.getOrderAccount(order);
             const numerator = new BN(inputAmount).mul(orderAccount.expectedOutputAmount);
             const denominator = orderAccount.initialInputAmount;
             return numerator.add(denominator).sub(new BN(1)).div(denominator);
@@ -517,7 +517,7 @@ describe("Type B Parent Limit Orders", () => {
         });
 
         beforeEach(async () => {
-            const { signature, order: orderPubkey, tpOrder: tpOrderPubkey, slOrder: slOrderPubkey } = await limoHelper.createOrder({
+            const { signature, order: orderPubkey, tpOrder: tpOrderPubkey, slOrder: slOrderPubkey } = await ordoHelper.createOrder({
                 maker: makerWallet,
                 inputMint: inputMint,
                 outputMint: outputMint,
@@ -531,39 +531,39 @@ describe("Type B Parent Limit Orders", () => {
             tpOrder = tpOrderPubkey;
             slOrder = slOrderPubkey;
 
-            await limoHelper.updateOrder({
+            await ordoHelper.updateOrder({
                 maker: makerWallet,
                 order: order,
                 mode: UpdateOrderMode.UpdatePermissionless,
                 value: new BN(1).toBuffer(),
             });
-            await limoHelper.updateOrder({
+            await ordoHelper.updateOrder({
                 maker: makerWallet,
                 order: order,
                 mode: UpdateOrderMode.UpdateCounterparty,
                 value: taker.publicKey.toBuffer(),
             });
 
-            await limoHelper.updateOrder({
+            await ordoHelper.updateOrder({
                 maker: makerWallet,
                 order: tpOrder,
                 mode: UpdateOrderMode.UpdatePermissionless,
                 value: new BN(1).toBuffer(),
             });
-            await limoHelper.updateOrder({
+            await ordoHelper.updateOrder({
                 maker: makerWallet,
                 order: tpOrder,
                 mode: UpdateOrderMode.UpdateCounterparty,
                 value: taker.publicKey.toBuffer(),
             });
 
-            await limoHelper.updateOrder({
+            await ordoHelper.updateOrder({
                 maker: makerWallet,
                 order: slOrder,
                 mode: UpdateOrderMode.UpdatePermissionless,
                 value: new BN(1).toBuffer(),
             });
-            await limoHelper.updateOrder({
+            await ordoHelper.updateOrder({
                 maker: makerWallet,
                 order: slOrder,
                 mode: UpdateOrderMode.UpdateCounterparty,
@@ -572,7 +572,7 @@ describe("Type B Parent Limit Orders", () => {
         });
 
         it("Child cannot consume more than available", async () => {
-            await limoHelper.takeOrder({
+            await ordoHelper.takeOrder({
                 taker: takerWallet,
                 order: order,
                 inputAmount: orderInputAmount.div(new BN(2)),
@@ -583,17 +583,17 @@ describe("Type B Parent Limit Orders", () => {
             const fillInputAmount = orderOutputAmount;
             const fillMinOutputAmount = await calcMinOutputAmount(fillInputAmount, tpOrder);
 
-            await expectRejects(limoHelper.takeOrder({
+            await expectRejects(ordoHelper.takeOrder({
                 taker: takerWallet,
                 order: tpOrder,
                 inputAmount: fillInputAmount,
                 minOutputAmount: fillMinOutputAmount,
                 tipAmountPermissionlessTaking: new BN(0),
-            }), LimoError.OrderInputAmountTooLarge);
+            }), OrdoError.OrderInputAmountTooLarge);
         });
 
         it("Child inventory matches parent fills minus child fills", async () => {
-            await limoHelper.takeOrder({
+            await ordoHelper.takeOrder({
                 taker: takerWallet,
                 order: order,
                 inputAmount: orderInputAmount,
@@ -601,7 +601,7 @@ describe("Type B Parent Limit Orders", () => {
                 tipAmountPermissionlessTaking: new BN(0),
             });
 
-            const orderAccountBefore = await limoHelper.getOrderAccount(order);
+            const orderAccountBefore = await ordoHelper.getOrderAccount(order);
 
             expect(orderAccountBefore.status).to.equal(OrderStatus.Filled);
             expect(orderAccountBefore.availableChildInputAmount.toString()).to.equal(orderOutputAmount.toString());
@@ -609,7 +609,7 @@ describe("Type B Parent Limit Orders", () => {
             const fillInputAmount = orderOutputAmount.div(new BN(2));
             const fillMinOutputAmount = await calcMinOutputAmount(fillInputAmount, tpOrder);
 
-            await limoHelper.takeOrder({
+            await ordoHelper.takeOrder({
                 taker: takerWallet,
                 order: tpOrder,
                 inputAmount: fillInputAmount,
@@ -617,21 +617,21 @@ describe("Type B Parent Limit Orders", () => {
                 tipAmountPermissionlessTaking: new BN(0),
             });
 
-            const orderAccount = await limoHelper.getOrderAccount(order);
+            const orderAccount = await ordoHelper.getOrderAccount(order);
 
             expect(orderAccount.availableChildInputAmount.toString()).to.equal(orderOutputAmount.sub(fillInputAmount).toString());
             
-            await expectRejects(limoHelper.takeOrder({
+            await expectRejects(ordoHelper.takeOrder({
                 taker: takerWallet,
                 order: tpOrder,
                 inputAmount: fillInputAmount.add(new BN(1)),
                 minOutputAmount: await calcMinOutputAmount(fillInputAmount.add(new BN(1)), tpOrder),
                 tipAmountPermissionlessTaking: new BN(0),
-            }), LimoError.OrderInputAmountTooLarge);
+            }), OrdoError.OrderInputAmountTooLarge);
         });
 
         it("No double spend across TP and SL", async () => {
-            await limoHelper.takeOrder({
+            await ordoHelper.takeOrder({
                 taker: takerWallet,
                 order: order,
                 inputAmount: orderInputAmount,
@@ -639,7 +639,7 @@ describe("Type B Parent Limit Orders", () => {
                 tipAmountPermissionlessTaking: new BN(0),
             });
 
-            const orderAccountBefore = await limoHelper.getOrderAccount(order);
+            const orderAccountBefore = await ordoHelper.getOrderAccount(order);
 
             expect(orderAccountBefore.status).to.equal(OrderStatus.Filled);
             expect(orderAccountBefore.availableChildInputAmount.toString()).to.equal(orderOutputAmount.toString());
@@ -647,7 +647,7 @@ describe("Type B Parent Limit Orders", () => {
             const fillInputAmount = orderOutputAmount.div(new BN(2));
             const fillMinOutputAmount = await calcMinOutputAmount(fillInputAmount, tpOrder);
 
-            await limoHelper.takeOrder({
+            await ordoHelper.takeOrder({
                 taker: takerWallet,
                 order: tpOrder,
                 inputAmount: fillInputAmount,
@@ -655,17 +655,17 @@ describe("Type B Parent Limit Orders", () => {
                 tipAmountPermissionlessTaking: new BN(0),
             });
 
-            const orderAccount = await limoHelper.getOrderAccount(order);
+            const orderAccount = await ordoHelper.getOrderAccount(order);
 
             expect(orderAccount.availableChildInputAmount.toString()).to.equal(orderOutputAmount.sub(fillInputAmount).toString());
 
-            await expectRejects(limoHelper.takeOrder({
+            await expectRejects(ordoHelper.takeOrder({
                 taker: takerWallet,
                 order: slOrder,
                 inputAmount: fillInputAmount.add(new BN(1)),
                 minOutputAmount: await calcMinOutputAmount(fillInputAmount.add(new BN(10)), slOrder),
                 tipAmountPermissionlessTaking: new BN(0),
-            }), LimoError.OrderInputAmountTooLarge);
+            }), OrdoError.OrderInputAmountTooLarge);
         });
     });
 });

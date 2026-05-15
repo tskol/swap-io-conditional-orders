@@ -3,11 +3,11 @@ import * as spl from "@solana/spl-token";
 import { web3, BN } from "@coral-xyz/anchor";
 import { expect } from "chai";
 import {
-  LimoHelper,
-} from "./helpers/limo";
+  OrdoHelper,
+} from "./helpers/ordo";
 import {
   airdrop,
-  generateRandomLimoAccounts
+  generateRandomOrdoAccounts
 } from "./helpers/utils";
 
 export const STABLE_PRICE_FEED =
@@ -29,7 +29,7 @@ describe("Initialize", () => {
     const payer = web3.Keypair.generate();
     const payerWallet = new anchor.Wallet(payer);
 
-    const limoHelper = new LimoHelper(provider);
+    const ordoHelper = new OrdoHelper(provider);
   
     before(async function() {
         // Check if validator is running
@@ -50,11 +50,11 @@ describe("Initialize", () => {
   
     describe("Initialize Global Config", () => {
         it("Should initialize global config", async () => {
-        const { signature, globalConfig, pdaAuthority, pdaAuthorityBump } = await limoHelper.initializeGlobalConfig({
+        const { signature, globalConfig, pdaAuthority, pdaAuthorityBump } = await ordoHelper.initializeGlobalConfig({
             payer: payerWallet,
         });
 
-        const configAccount = await limoHelper.getGlobalConfigAccount();
+        const configAccount = await ordoHelper.getGlobalConfigAccount();
 
         expect(configAccount.flashTakeOrderBlocked).to.equal(0);
         expect(configAccount.newOrdersBlocked).to.equal(0);
@@ -96,11 +96,11 @@ describe("Initialize", () => {
           decimals,
         );
 
-        const { signature, vault, feeVault } = await limoHelper.initializeVault({
+        const { signature, vault, feeVault } = await ordoHelper.initializeVault({
           payer: payerWallet,
           mint,
         });
-        const { pdaAuthority } = await limoHelper.getPdaAuthority(limoHelper.getGlobalConfig());
+        const { pdaAuthority } = await ordoHelper.getPdaAuthority(ordoHelper.getGlobalConfig());
 
         const vaultAta = await spl.getAccount(provider.connection, vault);
         const feeVaultAta = await spl.getAccount(provider.connection, feeVault);
@@ -129,19 +129,19 @@ describe("Initialize", () => {
           decimals,
         );
 
-        const { signature, oraclePool } = await limoHelper.initializeOraclePool({
+        const { signature, oraclePool } = await ordoHelper.initializeOraclePool({
           payer: payerWallet,
           mint,
           feedId: STABLE_PRICE_FEED,
         });
 
-        const oraclePoolAccount = await limoHelper.getOraclePoolAccount(mint);
+        const oraclePoolAccount = await ordoHelper.getOraclePoolAccount(mint);
 
         // Remove '0x' prefix if present and decode hex to number array
         const feedIdHex = STABLE_PRICE_FEED.startsWith('0x') ? STABLE_PRICE_FEED.slice(2) : STABLE_PRICE_FEED;
         const feedIdArray = Array.from(anchor.utils.bytes.hex.decode(feedIdHex));
 
-        expect(oraclePoolAccount.globalConfig).to.deep.equal(limoHelper.getGlobalConfig());
+        expect(oraclePoolAccount.globalConfig).to.deep.equal(ordoHelper.getGlobalConfig());
         expect(oraclePoolAccount.oracleFeedId).to.deep.equal(feedIdArray);
         expect(oraclePoolAccount.tokenMint).to.deep.equal(mint);
       });

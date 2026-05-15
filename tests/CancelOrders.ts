@@ -3,17 +3,17 @@ import * as spl from "@solana/spl-token";
 import { web3, BN } from "@coral-xyz/anchor";
 import { expect } from "chai";
 import {
-  LimoHelper,
-} from "./helpers/limo";
+  OrdoHelper,
+} from "./helpers/ordo";
 import {
   airdrop,
   createMintWithInitialBalance,
   expectRejects,
-  generateRandomLimoAccounts,
+  generateRandomOrdoAccounts,
 } from "./helpers/utils";
-import { OrderStatus, OrderType, LimoError, UpdateGlobalConfigMode, UpdateOrderMode } from "./helpers/constants";
-// import { LimoHelper } from "./helpers/limo.js";
-// import { airdrop, generateRandomLimoAccounts } from "./helpers/utils.js";
+import { OrderStatus, OrderType, OrdoError, UpdateGlobalConfigMode, UpdateOrderMode } from "./helpers/constants";
+// import { OrdoHelper } from "./helpers/ordo.js";
+// import { airdrop, generateRandomOrdoAccounts } from "./helpers/utils.js";
 
 export const STABLE_PRICE_FEED =
   "0x8b1e8e689fbb95ece35155a8b42cb9f1b14208a2f6507866a9a90e8dc955289a";
@@ -40,7 +40,7 @@ describe.only("Safe cancellation and full unwind", () => {
     const tokenCreator = web3.Keypair.generate();
     const tokenCreatorWallet = new anchor.Wallet(tokenCreator);
 
-    const limoHelper = new LimoHelper(provider);
+    const ordoHelper = new OrdoHelper(provider);
 
     let inputMint: web3.PublicKey;
     let outputMint: web3.PublicKey;
@@ -114,25 +114,25 @@ describe.only("Safe cancellation and full unwind", () => {
             outputAmount,
         )
 
-        await limoHelper.initializeGlobalConfig({
+        await ordoHelper.initializeGlobalConfig({
             payer: payerWallet,
         });
 
-        await limoHelper.initializeVault({
+        await ordoHelper.initializeVault({
             payer: payerWallet,
             mint: inputMint,
         });
-        await limoHelper.initializeVault({
+        await ordoHelper.initializeVault({
             payer: payerWallet,
             mint: outputMint,
         });
 
-        await limoHelper.initializeOraclePool({
+        await ordoHelper.initializeOraclePool({
             payer: payerWallet,
             mint: inputMint,
             feedId: STABLE_PRICE_FEED,
         });
-        await limoHelper.initializeOraclePool({
+        await ordoHelper.initializeOraclePool({
             payer: payerWallet,
             mint: outputMint,
             feedId: STABLE_PRICE_FEED,
@@ -140,7 +140,7 @@ describe.only("Safe cancellation and full unwind", () => {
     });
 
     async function calcMinOutputAmount(inputAmount: BN, order: web3.PublicKey): Promise<BN> {
-        const orderAccount = await limoHelper.getOrderAccount(order);
+        const orderAccount = await ordoHelper.getOrderAccount(order);
         const numerator = new BN(inputAmount).mul(orderAccount.expectedOutputAmount);
         const denominator = orderAccount.initialInputAmount;
         return numerator.add(denominator).sub(new BN(1)).div(denominator);
@@ -153,7 +153,7 @@ describe.only("Safe cancellation and full unwind", () => {
         const activeDurationSeconds = new BN(10);
 
         beforeEach(async () => {
-            const { signature, order: orderPubkey } = await limoHelper.createOrder({
+            const { signature, order: orderPubkey } = await ordoHelper.createOrder({
                 maker: makerWallet,
                 inputMint: inputMint,
                 outputMint: outputMint,
@@ -165,7 +165,7 @@ describe.only("Safe cancellation and full unwind", () => {
 
             order = orderPubkey;
 
-            await limoHelper.updateGlobalConfig({
+            await ordoHelper.updateGlobalConfig({
                 payer: payerWallet,
                 mode: UpdateGlobalConfigMode.UpdateAllowedTaker,
                 value: Array.from(taker.publicKey.toBuffer()),
@@ -181,15 +181,15 @@ describe.only("Safe cancellation and full unwind", () => {
                 outputMint,
                 maker.publicKey
             );
-            const { vault: inputVaultAta } = await limoHelper.getVault(inputMint);
-            const { vault: outputVaultAta } = await limoHelper.getVault(outputMint);
+            const { vault: inputVaultAta } = await ordoHelper.getVault(inputMint);
+            const { vault: outputVaultAta } = await ordoHelper.getVault(outputMint);
 
             const makerInputAtaBalanceBefore = await provider.connection.getTokenAccountBalance(makerInputAta);
             const makerOutputAtaBalanceBefore = await provider.connection.getTokenAccountBalance(makerOutputAta);
             const inputVaultAtaBalanceBefore = await provider.connection.getTokenAccountBalance(inputVaultAta);
             const outputVaultAtaBalanceBefore = await provider.connection.getTokenAccountBalance(outputVaultAta);
 
-            const { signature } = await limoHelper.closeOrder({
+            const { signature } = await ordoHelper.closeOrder({
                 closer: makerWallet,
                 order: order,
             });
@@ -212,18 +212,18 @@ describe.only("Safe cancellation and full unwind", () => {
         });
 
         it("Cancel Type A before cooldown rejected", async () => {
-            await limoHelper.updateGlobalConfig({
+            await ordoHelper.updateGlobalConfig({
                 payer: payerWallet,
                 mode: UpdateGlobalConfigMode.UpdateOrderCloseDelaySeconds,
                 value: [10],
             });
 
-            await expectRejects(limoHelper.closeOrder({
+            await expectRejects(ordoHelper.closeOrder({
                 closer: makerWallet,
                 order: order,
-            }), LimoError.NotEnoughTimePassedSinceLastUpdate);
+            }), OrdoError.NotEnoughTimePassedSinceLastUpdate);
 
-            await limoHelper.updateGlobalConfig({
+            await ordoHelper.updateGlobalConfig({
                 payer: payerWallet,
                 mode: UpdateGlobalConfigMode.UpdateOrderCloseDelaySeconds,
                 value: [0],
@@ -237,7 +237,7 @@ describe.only("Safe cancellation and full unwind", () => {
             const waitMs = (activeDurationSeconds.toNumber() + 1) * 1000;
             await new Promise(resolve => setTimeout(resolve, waitMs));
 
-            await limoHelper.closeOrder({
+            await ordoHelper.closeOrder({
                 closer: takerWallet,
                 order: order,
             });
@@ -250,7 +250,7 @@ describe.only("Safe cancellation and full unwind", () => {
             const waitMs = (activeDurationSeconds.toNumber() + 1) * 1000;
             await new Promise(resolve => setTimeout(resolve, waitMs));
 
-            await limoHelper.closeOrder({
+            await ordoHelper.closeOrder({
                 closer: makerWallet,
                 order: order,
             });
@@ -260,15 +260,15 @@ describe.only("Safe cancellation and full unwind", () => {
         });
 
         it("Should be rejected if closer is taker and active duration is not expired", async () => {
-            await expectRejects(limoHelper.closeOrder({
+            await expectRejects(ordoHelper.closeOrder({
                 closer: takerWallet,
                 order: order,
-            }), LimoError.InvalidAccount);
+            }), OrdoError.InvalidAccount);
         });
 
         it("Cancel Type A with keeper close fee", async () => {
             const keeperCloseFeeBps = new BN(1000);
-            await limoHelper.updateGlobalConfig({
+            await ordoHelper.updateGlobalConfig({
                 payer: payerWallet,
                 mode: UpdateGlobalConfigMode.UpdateKeeperCloseFeeBps,
                 value: Array.from(keeperCloseFeeBps.toArray("le", 2)),
@@ -290,8 +290,8 @@ describe.only("Safe cancellation and full unwind", () => {
                 outputMint,
                 taker.publicKey
             );
-            const { vault: inputVaultAta } = await limoHelper.getVault(inputMint);
-            const { vault: outputVaultAta } = await limoHelper.getVault(outputMint);
+            const { vault: inputVaultAta } = await ordoHelper.getVault(inputMint);
+            const { vault: outputVaultAta } = await ordoHelper.getVault(outputMint);
 
             const makerInputAtaBalanceBefore = await provider.connection.getTokenAccountBalance(makerInputAta);
             const makerOutputAtaBalanceBefore = await provider.connection.getTokenAccountBalance(makerOutputAta);
@@ -303,12 +303,12 @@ describe.only("Safe cancellation and full unwind", () => {
             const waitMs = (activeDurationSeconds.toNumber() + 1) * 1000;
             await new Promise(resolve => setTimeout(resolve, waitMs));
 
-            await limoHelper.closeOrder({
+            await ordoHelper.closeOrder({
                 closer: takerWallet,
                 order: order,
             });
 
-            await limoHelper.updateGlobalConfig({
+            await ordoHelper.updateGlobalConfig({
                 payer: payerWallet,
                 mode: UpdateGlobalConfigMode.UpdateKeeperCloseFeeBps,
                 value: Array.from(new BN(0).toArray("le", 2)),
@@ -337,14 +337,14 @@ describe.only("Safe cancellation and full unwind", () => {
 
         it("Cancel Type A without keeper close fee if not enough input amount to cover the fee", async () => {
             const keeperCloseFeeBps = new BN(5001);
-            await limoHelper.updateGlobalConfig({
+            await ordoHelper.updateGlobalConfig({
                 payer: payerWallet,
                 mode: UpdateGlobalConfigMode.UpdateKeeperCloseFeeBps,
                 value: Array.from(keeperCloseFeeBps.toArray("le", 2)),
             });
             const fillInputAmount = orderInputAmount.div(new BN(2));
             const fillMinOutputAmount = await calcMinOutputAmount(fillInputAmount, order);
-            await limoHelper.takeOrder({
+            await ordoHelper.takeOrder({
                 taker: takerWallet,
                 order: order,
                 inputAmount: fillInputAmount,
@@ -368,8 +368,8 @@ describe.only("Safe cancellation and full unwind", () => {
                 outputMint,
                 taker.publicKey
             );
-            const { vault: inputVaultAta } = await limoHelper.getVault(inputMint);
-            const { vault: outputVaultAta } = await limoHelper.getVault(outputMint);
+            const { vault: inputVaultAta } = await ordoHelper.getVault(inputMint);
+            const { vault: outputVaultAta } = await ordoHelper.getVault(outputMint);
 
             const makerInputAtaBalanceBefore = await provider.connection.getTokenAccountBalance(makerInputAta);
             const makerOutputAtaBalanceBefore = await provider.connection.getTokenAccountBalance(makerOutputAta);
@@ -381,12 +381,12 @@ describe.only("Safe cancellation and full unwind", () => {
             const waitMs = (activeDurationSeconds.toNumber() + 1) * 1000;
             await new Promise(resolve => setTimeout(resolve, waitMs));
 
-            await limoHelper.closeOrder({
+            await ordoHelper.closeOrder({
                 closer: takerWallet,
                 order: order,
             });
 
-            await limoHelper.updateGlobalConfig({
+            await ordoHelper.updateGlobalConfig({
                 payer: payerWallet,
                 mode: UpdateGlobalConfigMode.UpdateKeeperCloseFeeBps,
                 value: Array.from(new BN(0).toArray("le", 2)),
@@ -423,14 +423,14 @@ describe.only("Safe cancellation and full unwind", () => {
         const activeDurationSeconds = new BN(10);
 
         async function calcMinOutputAmount(inputAmount: BN, order: web3.PublicKey): Promise<BN> {
-            const orderAccount = await limoHelper.getOrderAccount(order);
+            const orderAccount = await ordoHelper.getOrderAccount(order);
             const numerator = new BN(inputAmount).mul(orderAccount.expectedOutputAmount);
             const denominator = orderAccount.initialInputAmount;
             return numerator.add(denominator).sub(new BN(1)).div(denominator);
         }
 
         beforeEach(async () => {
-            const { signature, order: orderPubkey, tpOrder: tpOrderPubkey, slOrder: slOrderPubkey } = await limoHelper.createOrder({
+            const { signature, order: orderPubkey, tpOrder: tpOrderPubkey, slOrder: slOrderPubkey } = await ordoHelper.createOrder({
                 maker: makerWallet,
                 inputMint: inputMint,
                 outputMint: outputMint,
@@ -446,7 +446,7 @@ describe.only("Safe cancellation and full unwind", () => {
             tpOrder = tpOrderPubkey;
             slOrder = slOrderPubkey;
 
-            await limoHelper.updateGlobalConfig({
+            await ordoHelper.updateGlobalConfig({
                 payer: payerWallet,
                 mode: UpdateGlobalConfigMode.UpdateAllowedTaker,
                 value: Array.from(taker.publicKey.toBuffer()),
@@ -462,13 +462,13 @@ describe.only("Safe cancellation and full unwind", () => {
                 outputMint,
                 maker.publicKey
             );
-            const { vault: inputVaultAta } = await limoHelper.getVault(inputMint);
-            const { vault: outputVaultAta } = await limoHelper.getVault(outputMint);
+            const { vault: inputVaultAta } = await ordoHelper.getVault(inputMint);
+            const { vault: outputVaultAta } = await ordoHelper.getVault(outputMint);
 
             const fillInputAmount = orderInputAmount.div(new BN(2));
             const fillMinOutputAmount = await calcMinOutputAmount(fillInputAmount, order);
 
-            await limoHelper.takeOrder({
+            await ordoHelper.takeOrder({
                 taker: takerWallet,
                 order: order,
                 inputAmount: fillInputAmount,
@@ -481,7 +481,7 @@ describe.only("Safe cancellation and full unwind", () => {
             const inputVaultAtaBalanceBefore = await provider.connection.getTokenAccountBalance(inputVaultAta);
             const outputVaultAtaBalanceBefore = await provider.connection.getTokenAccountBalance(outputVaultAta);
 
-            const { signature } = await limoHelper.closeOrder({
+            const { signature } = await ordoHelper.closeOrder({
                 closer: makerWallet,
                 order: order,
             });
@@ -508,18 +508,18 @@ describe.only("Safe cancellation and full unwind", () => {
         });
 
         it("Cancel Type A before cooldown rejected", async () => {
-            await limoHelper.updateGlobalConfig({
+            await ordoHelper.updateGlobalConfig({
                 payer: payerWallet,
                 mode: UpdateGlobalConfigMode.UpdateOrderCloseDelaySeconds,
                 value: [10],
             });
 
-            await expectRejects(limoHelper.closeOrder({
+            await expectRejects(ordoHelper.closeOrder({
                 closer: makerWallet,
                 order: order,
-            }), LimoError.NotEnoughTimePassedSinceLastUpdate);
+            }), OrdoError.NotEnoughTimePassedSinceLastUpdate);
 
-            await limoHelper.updateGlobalConfig({
+            await ordoHelper.updateGlobalConfig({
                 payer: payerWallet,
                 mode: UpdateGlobalConfigMode.UpdateOrderCloseDelaySeconds,
                 value: [0],
@@ -533,7 +533,7 @@ describe.only("Safe cancellation and full unwind", () => {
             const waitMs = (activeDurationSeconds.toNumber() + 1) * 1000;
             await new Promise(resolve => setTimeout(resolve, waitMs));
 
-            await limoHelper.closeOrder({
+            await ordoHelper.closeOrder({
                 closer: takerWallet,
                 order: order,
             });
@@ -551,7 +551,7 @@ describe.only("Safe cancellation and full unwind", () => {
             const waitMs = (activeDurationSeconds.toNumber() + 1) * 1000;
             await new Promise(resolve => setTimeout(resolve, waitMs));
 
-            await limoHelper.closeOrder({
+            await ordoHelper.closeOrder({
                 closer: makerWallet,
                 order: order,
             });
@@ -566,15 +566,15 @@ describe.only("Safe cancellation and full unwind", () => {
         });
 
         it("Should be rejected if closer is taker and active duration is not expired", async () => {
-            await expectRejects(limoHelper.closeOrder({
+            await expectRejects(ordoHelper.closeOrder({
                 closer: takerWallet,
                 order: order,
-            }), LimoError.InvalidAccount);
+            }), OrdoError.InvalidAccount);
         });
 
         it("Cancel Type B with keeper close fee from parent", async () => {
             const keeperCloseFeeBps = new BN(1000);
-            await limoHelper.updateGlobalConfig({
+            await ordoHelper.updateGlobalConfig({
                 payer: payerWallet,
                 mode: UpdateGlobalConfigMode.UpdateKeeperCloseFeeBps,
                 value: Array.from(keeperCloseFeeBps.toArray("le", 2)),
@@ -596,13 +596,13 @@ describe.only("Safe cancellation and full unwind", () => {
                 outputMint,
                 taker.publicKey
             );
-            const { vault: inputVaultAta } = await limoHelper.getVault(inputMint);
-            const { vault: outputVaultAta } = await limoHelper.getVault(outputMint);
+            const { vault: inputVaultAta } = await ordoHelper.getVault(inputMint);
+            const { vault: outputVaultAta } = await ordoHelper.getVault(outputMint);
 
             const fillInputAmount = orderInputAmount.div(new BN(2));
             const fillMinOutputAmount = await calcMinOutputAmount(fillInputAmount, order);
 
-            await limoHelper.takeOrder({
+            await ordoHelper.takeOrder({
                 taker: takerWallet,
                 order: order,
                 inputAmount: fillInputAmount,
@@ -620,7 +620,7 @@ describe.only("Safe cancellation and full unwind", () => {
             const waitMs = (activeDurationSeconds.toNumber() + 1) * 1000;
             await new Promise(resolve => setTimeout(resolve, waitMs));
 
-            const { signature } = await limoHelper.closeOrder({
+            const { signature } = await ordoHelper.closeOrder({
                 closer: takerWallet,
                 order: order,
             });
@@ -651,7 +651,7 @@ describe.only("Safe cancellation and full unwind", () => {
             expect(tpOrderAccountInfo).to.be.null;
             expect(slOrderAccountInfo).to.be.null;
             
-            await limoHelper.updateGlobalConfig({
+            await ordoHelper.updateGlobalConfig({
                 payer: payerWallet,
                 mode: UpdateGlobalConfigMode.UpdateKeeperCloseFeeBps,
                 value: Array.from(new BN(0).toArray("le", 2)),
@@ -660,7 +660,7 @@ describe.only("Safe cancellation and full unwind", () => {
 
         it("Cancel Type B with keeper close fee from child if not enough input amount to cover the fee", async () => {
             const keeperCloseFeeBps = new BN(5001);
-            await limoHelper.updateGlobalConfig({
+            await ordoHelper.updateGlobalConfig({
                 payer: payerWallet,
                 mode: UpdateGlobalConfigMode.UpdateKeeperCloseFeeBps,
                 value: Array.from(keeperCloseFeeBps.toArray("le", 2)),
@@ -682,13 +682,13 @@ describe.only("Safe cancellation and full unwind", () => {
                 outputMint,
                 taker.publicKey
             );
-            const { vault: inputVaultAta } = await limoHelper.getVault(inputMint);
-            const { vault: outputVaultAta } = await limoHelper.getVault(outputMint);
+            const { vault: inputVaultAta } = await ordoHelper.getVault(inputMint);
+            const { vault: outputVaultAta } = await ordoHelper.getVault(outputMint);
 
             const fillInputAmount = orderInputAmount.mul(new BN(3)).div(new BN(4));
             const fillMinOutputAmount = await calcMinOutputAmount(fillInputAmount, order);
 
-            await limoHelper.takeOrder({
+            await ordoHelper.takeOrder({
                 taker: takerWallet,
                 order: order,
                 inputAmount: fillInputAmount,
@@ -706,7 +706,7 @@ describe.only("Safe cancellation and full unwind", () => {
             const waitMs = (activeDurationSeconds.toNumber() + 1) * 1000;
             await new Promise(resolve => setTimeout(resolve, waitMs));
 
-            const { signature } = await limoHelper.closeOrder({
+            const { signature } = await ordoHelper.closeOrder({
                 closer: takerWallet,
                 order: order,
             });
@@ -737,7 +737,7 @@ describe.only("Safe cancellation and full unwind", () => {
             expect(tpOrderAccountInfo).to.be.null;
             expect(slOrderAccountInfo).to.be.null;
             
-            await limoHelper.updateGlobalConfig({
+            await ordoHelper.updateGlobalConfig({
                 payer: payerWallet,
                 mode: UpdateGlobalConfigMode.UpdateKeeperCloseFeeBps,
                 value: Array.from(new BN(0).toArray("le", 2)),
@@ -746,7 +746,7 @@ describe.only("Safe cancellation and full unwind", () => {
 
         it("Cancel Type B without keeper close fee from parent and child if not enough input amount to cover the fee", async () => {
             const keeperCloseFeeBps = new BN(5001);
-            await limoHelper.updateGlobalConfig({
+            await ordoHelper.updateGlobalConfig({
                 payer: payerWallet,
                 mode: UpdateGlobalConfigMode.UpdateKeeperCloseFeeBps,
                 value: Array.from(keeperCloseFeeBps.toArray("le", 2)),
@@ -768,13 +768,13 @@ describe.only("Safe cancellation and full unwind", () => {
                 outputMint,
                 taker.publicKey
             );
-            const { vault: inputVaultAta } = await limoHelper.getVault(inputMint);
-            const { vault: outputVaultAta } = await limoHelper.getVault(outputMint);
+            const { vault: inputVaultAta } = await ordoHelper.getVault(inputMint);
+            const { vault: outputVaultAta } = await ordoHelper.getVault(outputMint);
 
             const fillInputAmount = orderInputAmount.div(new BN(2));
             const fillMinOutputAmount = await calcMinOutputAmount(fillInputAmount, order);
 
-            await limoHelper.takeOrder({
+            await ordoHelper.takeOrder({
                 taker: takerWallet,
                 order: order,
                 inputAmount: fillInputAmount,
@@ -792,7 +792,7 @@ describe.only("Safe cancellation and full unwind", () => {
             const waitMs = (activeDurationSeconds.toNumber() + 1) * 1000;
             await new Promise(resolve => setTimeout(resolve, waitMs));
 
-            const { signature } = await limoHelper.closeOrder({
+            const { signature } = await ordoHelper.closeOrder({
                 closer: takerWallet,
                 order: order,
             });
@@ -821,7 +821,7 @@ describe.only("Safe cancellation and full unwind", () => {
             expect(tpOrderAccountInfo).to.be.null;
             expect(slOrderAccountInfo).to.be.null;
             
-            await limoHelper.updateGlobalConfig({
+            await ordoHelper.updateGlobalConfig({
                 payer: payerWallet,
                 mode: UpdateGlobalConfigMode.UpdateKeeperCloseFeeBps,
                 value: Array.from(new BN(0).toArray("le", 2)),

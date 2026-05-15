@@ -57,7 +57,7 @@ export const UpdateGlobalConfigMode = {
     UpdateKeeperCloseFeeBps: 20,
 }
 
-export const LimoError = {
+export const OrdoError = {
     InvalidFeedId: "Invalid feed id",
     InvalidBps: "Invalid BPS value, must be between 0 and 10000",
     InvalidWithdrawFeeAmount: "Invalid withdraw fee amount",

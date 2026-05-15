@@ -3,15 +3,16 @@ import { web3 } from "@coral-xyz/anchor";
 import {
   PublicKey,
 } from "@solana/web3.js";
-import { LimoHelper } from "../tests/helpers/limo";
+import { OrdoHelper } from "../tests/helpers/ordo";
 import { OrderType } from "../tests/helpers/constants";
 import { BN } from "@coral-xyz/anchor";
 
 const COMMITMENT: web3.Commitment = 'confirmed';
 
-const GLOBAL_CONFIG = new PublicKey("");
-const INPUT_MINT = new PublicKey("");
-const OUTPUT_MINT = new PublicKey("");
+const GLOBAL_CONFIG = new PublicKey("G5t5rvSjYPFfNWKjUvJ5eVU9xrb4SdhSkkiBFQRfUBNR");
+const INPUT_MINT = new PublicKey("E7bZyqvN5a46AyyzQLm1ns3PCheG2qmmt9uWqVFPWDvo");
+const OUTPUT_MINT = new PublicKey("5WsTaQwxNhXNyCvzTeGxyYynGL1nmGwPQQCuXwCtGimn");
+
 const INPUT_AMOUNT = new BN(1000000000);
 const OUTPUT_AMOUNT = new BN(1000000000);
 const ORDER_TYPE = OrderType.Vanilla;
@@ -30,10 +31,10 @@ async function main() {
     const user = provider.wallet as anchor.Wallet;
     console.log("Execute script from wallet: ", user.publicKey.toBase58());
 
-    const limoHelper = new LimoHelper(provider);
-    limoHelper.setGlobalConfig(GLOBAL_CONFIG);
+    const ordoHelper = new OrdoHelper(provider);
+    ordoHelper.setGlobalConfig(GLOBAL_CONFIG);
 
-    const { signature, order } = await limoHelper.createOrder({
+    const { signature, order } = await ordoHelper.createOrder({
         maker: user,
         inputMint: INPUT_MINT,
         outputMint: OUTPUT_MINT,

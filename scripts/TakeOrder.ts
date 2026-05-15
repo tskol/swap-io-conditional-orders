@@ -3,13 +3,15 @@ import { web3 } from "@coral-xyz/anchor";
 import {
   PublicKey,
 } from "@solana/web3.js";
-import { LimoHelper } from "../tests/helpers/limo";
+import { OrdoHelper } from "../tests/helpers/ordo";
 import { BN } from "@coral-xyz/anchor";
 
 const COMMITMENT: web3.Commitment = 'confirmed';
 
-const GLOBAL_CONFIG = new PublicKey("");
-const ORDER = new PublicKey("");
+
+const GLOBAL_CONFIG = new PublicKey("G5t5rvSjYPFfNWKjUvJ5eVU9xrb4SdhSkkiBFQRfUBNR");
+const ORDER = new PublicKey("6fUihjMykLWRYwsh9DyznQ3PsJNy4FzWD4mDKXQs3sDi");
+
 const INPUT_AMOUNT = new BN(1000000000);
 
 async function main() {
@@ -24,12 +26,12 @@ async function main() {
     const user = provider.wallet as anchor.Wallet;
     console.log("Execute script from wallet: ", user.publicKey.toBase58());
 
-    const limoHelper = new LimoHelper(provider);
-    limoHelper.setGlobalConfig(GLOBAL_CONFIG);
+    const ordoHelper = new OrdoHelper(provider);
+    ordoHelper.setGlobalConfig(GLOBAL_CONFIG);
 
-    const minOutputAmount = await limoHelper.calcOrderMinOutputAmount(INPUT_AMOUNT, ORDER);
+    const minOutputAmount = await ordoHelper.calcOrderMinOutputAmount(INPUT_AMOUNT, ORDER);
 
-    const { signatures } = await limoHelper.takeOrder({
+    const { signatures } = await ordoHelper.takeOrder({
         taker: user,
         order: ORDER,
         inputAmount: new BN(INPUT_AMOUNT),

@@ -5,16 +5,18 @@ anchor_version = "0.29.0"
 seeds = false
 skip-lint = false
 
-[programs.localnet]
-limo = "82qR3ftARSeXPBg9wnVrsLsAepfvimBUCPdNuiV9unhV"
+[programs.devnet]
+ordo = "3kcDAfBY5Q5cKJMwWKX3DRqGg3JwQ7Tntkh8faYF5yA5"
+
+[programs.mainnet]
+ordo = "EfsKVSxQxwoR9NpZfjgWuuwpbbF14BQgrh3rt4kAs181"
 
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "Localnet"
-# wallet = "~/.config/solana/id.json"
-wallet = "./.private/deployer.json"
+cluster = "https://api.mainnet-beta.solana.com"
+wallet = "/home/tskol/.config/solana/id.json"
 
 [scripts]
 CloseOrder = "yarn run ts-node ./scripts/CloseOrder.ts"
@@ -22,5 +24,5 @@ CreateOrder = "yarn run ts-node ./scripts/CreateOrder.ts"
 InitializeOraclePool = "yarn run ts-node ./scripts/InitializeOraclePool.ts"
 InitializeVault = "yarn run ts-node ./scripts/InitializeVault.ts"
 TakeOrder = "yarn run ts-node ./scripts/TakeOrder.ts"
-initializeGlobalConfig = "yarn run ts-node ./scripts/initializeGlobalConfig.ts"
+initializeGlobalConfig = "yarn run ts-node ./scripts/InitializeGlobalConfig.ts"
 test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/*.ts"

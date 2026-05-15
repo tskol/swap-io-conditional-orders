@@ -4,13 +4,13 @@ This directory contains the **LIMO** on-chain program (Anchor/Solana).
 
 ## Attribution
 
-This contract was built **based on** the upstream `kamino/limo` program by Kamino Finance.
+This contract was built **based on** the upstream `kamino/ordo` program by Kamino Finance.
 
-- Upstream reference: [`kamino-finance/limo`](https://github.com/Kamino-Finance/limo) (and related Kamino Finance repositories)
+- Upstream reference: [`kamino-finance/ordo`](https://github.com/Kamino-Finance/ordo) (and related Kamino Finance repositories)
 
 ## Program ID
 
-- **Program ID**: `82qR3ftARSeXPBg9wnVrsLsAepfvimBUCPdNuiV9unhV` (see `programs/limo/src/lib.rs`)
+- **Program ID**: `82qR3ftARSeXPBg9wnVrsLsAepfvimBUCPdNuiV9unhV` (see `programs/ordo/src/lib.rs`)
 - **Deployments**:
   - **Mainnet-beta**: deployed at the same Program ID
   - **Devnet**: deployed at the same Program ID
@@ -199,10 +199,10 @@ See the **Instructions (reference)** section above for full details. Quick list:
 
 ## Repo layout (program)
 
-- `programs/limo/src/lib.rs`: program entrypoints (Anchor instructions) + error codes
-- `programs/limo/src/handlers/`: instruction handlers
-- `programs/limo/src/state/`: account state definitions (e.g., `GlobalConfig`, `Order`, `OraclePoolsState`)
-- `programs/limo/src/utils/`: constraints, constants, helper logic
+- `programs/ordo/src/lib.rs`: program entrypoints (Anchor instructions) + error codes
+- `programs/ordo/src/handlers/`: instruction handlers
+- `programs/ordo/src/state/`: account state definitions (e.g., `GlobalConfig`, `Order`, `OraclePoolsState`)
+- `programs/ordo/src/utils/`: constraints, constants, helper logic
 
 ## Build & test (local)
 
@@ -274,7 +274,7 @@ Scripts live in:
 
 ## IDL
 
-The Anchor IDL for this program is generated into `target/idl/limo.json`.
+The Anchor IDL for this program is generated into `target/idl/ordo.json`.
 
 ```bash
 anchor build
@@ -283,5 +283,5 @@ ls -la target/idl/
 
 ## Security notes
 
-- This codebase includes `solana-security-txt` metadata (see `programs/limo/src/lib.rs`).
+- This codebase includes `solana-security-txt` metadata (see `programs/ordo/src/lib.rs`).
 
