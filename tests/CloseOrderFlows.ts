@@ -16,8 +16,13 @@ import {
   OrderType,
   OrdoError,
   UpdateGlobalConfigMode,
-  UpdateOrderMode,
 } from "./support/ordo-constants";
+import { calcProRataMinOutputAmount } from "./support/ordo/child-flow";
+import {
+  createParentCloseOrder,
+  createVanillaCloseOrder,
+  waitForOrderExpiry,
+} from "./support/ordo/close-flow";
 
 describe("Safe cancellation and full unwind", () => {
   const { connection, provider } = createFlowProvider();
@@ -58,18 +63,6 @@ describe("Safe cancellation and full unwind", () => {
     outputMint = flow.outputMint;
   });
 
-  async function calcMinOutputAmount(
-    inputAmount: BN,
-    order: web3.PublicKey,
-  ): Promise<BN> {
-    const orderAccount = await ordoHelper.getOrderAccount(order);
-    const numerator = new BN(inputAmount).mul(
-      orderAccount.expectedOutputAmount,
-    );
-    const denominator = orderAccount.initialInputAmount;
-    return numerator.add(denominator).sub(new BN(1)).div(denominator);
-  }
-
   describe("Cancel Type A order & refund remaining input", () => {
     let order: web3.PublicKey;
     const orderInputAmount = new BN(100000000000);
@@ -77,22 +70,16 @@ describe("Safe cancellation and full unwind", () => {
     const activeDurationSeconds = new BN(10);
 
     beforeEach(async () => {
-      const { signature, order: orderPubkey } = await ordoHelper.createOrder({
+      order = await createVanillaCloseOrder({
+        ordoHelper,
+        payer: payerWallet,
         maker: makerWallet,
-        inputMint: inputMint,
-        outputMint: outputMint,
+        taker,
+        inputMint,
+        outputMint,
         inputAmount: orderInputAmount,
         outputAmount: orderOutputAmount,
-        orderType: OrderType.Vanilla,
-        activeDurationSeconds: activeDurationSeconds,
-      });
-
-      order = orderPubkey;
-
-      await ordoHelper.updateGlobalConfig({
-        payer: payerWallet,
-        mode: UpdateGlobalConfigMode.UpdateCounterparty,
-        value: Array.from(taker.publicKey.toBuffer()),
+        activeDurationSeconds,
       });
     });
 
@@ -184,8 +171,7 @@ describe("Safe cancellation and full unwind", () => {
     it.skip("Cancel already Cancelled/Closed rejected", async () => {});
 
     it("Cancel Type A after active duration expired by taker", async () => {
-      const waitMs = (activeDurationSeconds.toNumber() + 1) * 1000;
-      await new Promise((resolve) => setTimeout(resolve, waitMs));
+      await waitForOrderExpiry(activeDurationSeconds);
 
       await ordoHelper.closeOrder({
         closer: takerWallet,
@@ -197,8 +183,7 @@ describe("Safe cancellation and full unwind", () => {
     });
 
     it("Cancel Type A after active duration expired by maker", async () => {
-      const waitMs = (activeDurationSeconds.toNumber() + 1) * 1000;
-      await new Promise((resolve) => setTimeout(resolve, waitMs));
+      await waitForOrderExpiry(activeDurationSeconds);
 
       await ordoHelper.closeOrder({
         closer: makerWallet,
@@ -259,8 +244,7 @@ describe("Safe cancellation and full unwind", () => {
       const closerOutputAtaBalanceBefore =
         await provider.connection.getTokenAccountBalance(closerOutputAta);
 
-      const waitMs = (activeDurationSeconds.toNumber() + 1) * 1000;
-      await new Promise((resolve) => setTimeout(resolve, waitMs));
+      await waitForOrderExpiry(activeDurationSeconds);
 
       await ordoHelper.closeOrder({
         closer: takerWallet,
@@ -329,10 +313,11 @@ describe("Safe cancellation and full unwind", () => {
         value: Array.from(keeperCloseFeeBps.toArray("le", 2)),
       });
       const fillInputAmount = orderInputAmount.div(new BN(2));
-      const fillMinOutputAmount = await calcMinOutputAmount(
-        fillInputAmount,
+      const fillMinOutputAmount = await calcProRataMinOutputAmount({
+        ordoHelper,
+        inputAmount: fillInputAmount,
         order,
-      );
+      });
       await ordoHelper.takeOrder({
         taker: takerWallet,
         order: order,
@@ -373,8 +358,7 @@ describe("Safe cancellation and full unwind", () => {
       const closerOutputAtaBalanceBefore =
         await provider.connection.getTokenAccountBalance(closerOutputAta);
 
-      const waitMs = (activeDurationSeconds.toNumber() + 1) * 1000;
-      await new Promise((resolve) => setTimeout(resolve, waitMs));
+      await waitForOrderExpiry(activeDurationSeconds);
 
       await ordoHelper.closeOrder({
         closer: takerWallet,
@@ -439,45 +423,23 @@ describe("Safe cancellation and full unwind", () => {
     const slOutputAmount = new BN(80000000000);
     const activeDurationSeconds = new BN(10);
 
-    async function calcMinOutputAmount(
-      inputAmount: BN,
-      order: web3.PublicKey,
-    ): Promise<BN> {
-      const orderAccount = await ordoHelper.getOrderAccount(order);
-      const numerator = new BN(inputAmount).mul(
-        orderAccount.expectedOutputAmount,
-      );
-      const denominator = orderAccount.initialInputAmount;
-      return numerator.add(denominator).sub(new BN(1)).div(denominator);
-    }
-
     beforeEach(async () => {
-      const {
-        signature,
-        order: orderPubkey,
-        tpOrder: tpOrderPubkey,
-        slOrder: slOrderPubkey,
-      } = await ordoHelper.createOrder({
+      const parentOrders = await createParentCloseOrder({
+        ordoHelper,
+        payer: payerWallet,
         maker: makerWallet,
-        inputMint: inputMint,
-        outputMint: outputMint,
+        taker,
+        inputMint,
+        outputMint,
         inputAmount: orderInputAmount,
         outputAmount: orderOutputAmount,
-        orderType: OrderType.LimitParent,
-        tpOutputAmount: tpOutputAmount,
-        slOutputAmount: slOutputAmount,
-        activeDurationSeconds: activeDurationSeconds,
+        tpOutputAmount,
+        slOutputAmount,
+        activeDurationSeconds,
       });
-
-      order = orderPubkey;
-      tpOrder = tpOrderPubkey;
-      slOrder = slOrderPubkey;
-
-      await ordoHelper.updateGlobalConfig({
-        payer: payerWallet,
-        mode: UpdateGlobalConfigMode.UpdateCounterparty,
-        value: Array.from(taker.publicKey.toBuffer()),
-      });
+      order = parentOrders.order;
+      tpOrder = parentOrders.tpOrder;
+      slOrder = parentOrders.slOrder;
     });
 
     it("Cancel Type B with parent+child balances", async () => {
@@ -493,10 +455,11 @@ describe("Safe cancellation and full unwind", () => {
       const { vault: outputVaultAta } = await ordoHelper.getVault(outputMint);
 
       const fillInputAmount = orderInputAmount.div(new BN(2));
-      const fillMinOutputAmount = await calcMinOutputAmount(
-        fillInputAmount,
+      const fillMinOutputAmount = await calcProRataMinOutputAmount({
+        ordoHelper,
+        inputAmount: fillInputAmount,
         order,
-      );
+      });
 
       await ordoHelper.takeOrder({
         taker: takerWallet,
@@ -592,8 +555,7 @@ describe("Safe cancellation and full unwind", () => {
     it.skip("Cancel already Cancelled/Closed rejected", async () => {});
 
     it("Cancel Type B after active duration expired by taker", async () => {
-      const waitMs = (activeDurationSeconds.toNumber() + 1) * 1000;
-      await new Promise((resolve) => setTimeout(resolve, waitMs));
+      await waitForOrderExpiry(activeDurationSeconds);
 
       await ordoHelper.closeOrder({
         closer: takerWallet,
@@ -612,8 +574,7 @@ describe("Safe cancellation and full unwind", () => {
     });
 
     it("Cancel Type B after active duration expired by maker", async () => {
-      const waitMs = (activeDurationSeconds.toNumber() + 1) * 1000;
-      await new Promise((resolve) => setTimeout(resolve, waitMs));
+      await waitForOrderExpiry(activeDurationSeconds);
 
       await ordoHelper.closeOrder({
         closer: makerWallet,
@@ -669,10 +630,11 @@ describe("Safe cancellation and full unwind", () => {
       const { vault: outputVaultAta } = await ordoHelper.getVault(outputMint);
 
       const fillInputAmount = orderInputAmount.div(new BN(2));
-      const fillMinOutputAmount = await calcMinOutputAmount(
-        fillInputAmount,
+      const fillMinOutputAmount = await calcProRataMinOutputAmount({
+        ordoHelper,
+        inputAmount: fillInputAmount,
         order,
-      );
+      });
 
       await ordoHelper.takeOrder({
         taker: takerWallet,
@@ -695,8 +657,7 @@ describe("Safe cancellation and full unwind", () => {
       const closerOutputAtaBalanceBefore =
         await provider.connection.getTokenAccountBalance(closerOutputAta);
 
-      const waitMs = (activeDurationSeconds.toNumber() + 1) * 1000;
-      await new Promise((resolve) => setTimeout(resolve, waitMs));
+      await waitForOrderExpiry(activeDurationSeconds);
 
       const { signature } = await ordoHelper.closeOrder({
         closer: takerWallet,
@@ -801,10 +762,11 @@ describe("Safe cancellation and full unwind", () => {
       const { vault: outputVaultAta } = await ordoHelper.getVault(outputMint);
 
       const fillInputAmount = orderInputAmount.mul(new BN(3)).div(new BN(4));
-      const fillMinOutputAmount = await calcMinOutputAmount(
-        fillInputAmount,
+      const fillMinOutputAmount = await calcProRataMinOutputAmount({
+        ordoHelper,
+        inputAmount: fillInputAmount,
         order,
-      );
+      });
 
       await ordoHelper.takeOrder({
         taker: takerWallet,
@@ -827,8 +789,7 @@ describe("Safe cancellation and full unwind", () => {
       const closerOutputAtaBalanceBefore =
         await provider.connection.getTokenAccountBalance(closerOutputAta);
 
-      const waitMs = (activeDurationSeconds.toNumber() + 1) * 1000;
-      await new Promise((resolve) => setTimeout(resolve, waitMs));
+      await waitForOrderExpiry(activeDurationSeconds);
 
       const { signature } = await ordoHelper.closeOrder({
         closer: takerWallet,
@@ -932,10 +893,11 @@ describe("Safe cancellation and full unwind", () => {
       const { vault: outputVaultAta } = await ordoHelper.getVault(outputMint);
 
       const fillInputAmount = orderInputAmount.div(new BN(2));
-      const fillMinOutputAmount = await calcMinOutputAmount(
-        fillInputAmount,
+      const fillMinOutputAmount = await calcProRataMinOutputAmount({
+        ordoHelper,
+        inputAmount: fillInputAmount,
         order,
-      );
+      });
 
       await ordoHelper.takeOrder({
         taker: takerWallet,
@@ -958,8 +920,7 @@ describe("Safe cancellation and full unwind", () => {
       const closerOutputAtaBalanceBefore =
         await provider.connection.getTokenAccountBalance(closerOutputAta);
 
-      const waitMs = (activeDurationSeconds.toNumber() + 1) * 1000;
-      await new Promise((resolve) => setTimeout(resolve, waitMs));
+      await waitForOrderExpiry(activeDurationSeconds);
 
       const { signature } = await ordoHelper.closeOrder({
         closer: takerWallet,
