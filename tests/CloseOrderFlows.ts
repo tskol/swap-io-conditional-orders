@@ -167,7 +167,7 @@ describe.only("Safe cancellation and full unwind", () => {
 
             await ordoHelper.updateGlobalConfig({
                 payer: payerWallet,
-                mode: UpdateGlobalConfigMode.UpdateAllowedTaker,
+                mode: UpdateGlobalConfigMode.UpdateCounterparty,
                 value: Array.from(taker.publicKey.toBuffer()),
             });
         });
@@ -448,7 +448,7 @@ describe.only("Safe cancellation and full unwind", () => {
 
             await ordoHelper.updateGlobalConfig({
                 payer: payerWallet,
-                mode: UpdateGlobalConfigMode.UpdateAllowedTaker,
+                mode: UpdateGlobalConfigMode.UpdateCounterparty,
                 value: Array.from(taker.publicKey.toBuffer()),
             });
         });

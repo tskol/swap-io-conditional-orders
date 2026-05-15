@@ -13,7 +13,7 @@ import {
 export const STABLE_PRICE_FEED =
   "0x8b1e8e689fbb95ece35155a8b42cb9f1b14208a2f6507866a9a90e8dc955289a";
 
-describe("Initialize", () => {
+describe("BootstrapFlows", () => {
     const commitment: web3.Commitment = "confirmed";
     const envProvider = anchor.AnchorProvider.env();
     const connection = new web3.Connection(

@@ -86,7 +86,7 @@ pub enum OrdoError {
     CPINotAllowed,
 
     #[msg("Flash take_order is blocked")]
-    FlashTakeOrderBlocked,
+    FlashExecuteOrderBlocked,
 
     #[msg("Some unexpected instructions are present in the tx. Either before or after the flash ixs, or some ix target the same program between")]
     FlashTxWithUnexpectedIxs,

@@ -67,7 +67,7 @@ impl TryFrom<u8> for OrderType {
 #[repr(u16)]
 pub enum UpdateGlobalConfigMode {
     UpdateEmergencyMode = 0,
-    UpdateFlashTakeOrderBlocked = 1,
+    UpdateFlashExecuteOrderBlocked = 1,
     UpdateBlockNewOrders = 2,
     UpdateBlockOrderTaking = 3,
     UpdateHostFeeBps = 4,
@@ -76,7 +76,7 @@ pub enum UpdateGlobalConfigMode {
     UpdateTxnFeeCost = 7,
     UpdateAtaCreationCost = 8,
     UpdateTpSlEnabled = 9,
-    UpdateCreateOrderFeeBps = 10,
+    UpdateSubmitOrderFeeBps = 10,
     UpdateParentFillFeeKeeperBps = 11,
     UpdateParentFillFeeProtocolBps = 12,
     UpdateTpSlChildFeeKeeperBps = 13,
@@ -84,7 +84,7 @@ pub enum UpdateGlobalConfigMode {
     UpdateOracleMaxStalenessSeconds = 15,
     UpdateSlMaxUpwardDeviationBps = 16,
     UpdateTpSlMinDistanceBps = 17,
-    UpdateAllowedTaker = 18,
+    UpdateCounterparty = 18,
     UpdateKeeperTakeFeeBps = 19,
     UpdateKeeperCloseFeeBps = 20,
 }

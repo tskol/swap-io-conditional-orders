@@ -17,7 +17,7 @@ pub fn update_global_config(
 ) -> Result<()> {
     match mode {
         UpdateGlobalConfigMode::UpdateEmergencyMode
-        | UpdateGlobalConfigMode::UpdateFlashTakeOrderBlocked
+        | UpdateGlobalConfigMode::UpdateFlashExecuteOrderBlocked
         | UpdateGlobalConfigMode::UpdateBlockNewOrders
         | UpdateGlobalConfigMode::UpdateBlockOrderTaking
         | UpdateGlobalConfigMode::UpdateTpSlEnabled => {
@@ -25,7 +25,7 @@ pub fn update_global_config(
             update_global_config_flag(global_config, mode, value, ts)?;
         }
         UpdateGlobalConfigMode::UpdateHostFeeBps
-        | UpdateGlobalConfigMode::UpdateCreateOrderFeeBps
+        | UpdateGlobalConfigMode::UpdateSubmitOrderFeeBps
         | UpdateGlobalConfigMode::UpdateSlMaxUpwardDeviationBps
         | UpdateGlobalConfigMode::UpdateTpSlMinDistanceBps
         | UpdateGlobalConfigMode::UpdateParentFillFeeKeeperBps
@@ -51,7 +51,7 @@ pub fn update_global_config(
             let value = Pubkey::new_from_array(value[0..32].try_into().unwrap());
             update_global_config_pubkey(global_config, mode, value, ts)?
         }
-        UpdateGlobalConfigMode::UpdateAllowedTaker => {
+        UpdateGlobalConfigMode::UpdateCounterparty => {
             let value = Pubkey::new_from_array(value[0..32].try_into().unwrap());
             update_global_config_pubkey(global_config, mode, value, ts)?
         }

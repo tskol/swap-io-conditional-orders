@@ -1,12 +1,12 @@
 use anchor_lang::prelude::*;
 
 use crate::{
-    handlers::close_order_and_claim_tip::CloseOrderAndClaimTip, state::Order,
+    handlers::close_order_and_claim_tip::ExitOrderAndClaimTip, state::Order,
     token_operations::transfer_from_vault_to_token_account, OrdoError,
 };
 
 pub(super) fn return_remaining_order_vaults(
-    ctx: &Context<CloseOrderAndClaimTip>,
+    ctx: &Context<ExitOrderAndClaimTip>,
     order: &Order,
     seeds: &[&[u8]],
 ) -> Result<()> {
@@ -46,7 +46,7 @@ pub(super) fn return_remaining_order_vaults(
     Ok(())
 }
 
-impl<'info> CloseOrderAndClaimTip<'info> {
+impl<'info> ExitOrderAndClaimTip<'info> {
     pub(super) fn transfer_input_vault_to(
         &self,
         destination_token_account: AccountInfo<'info>,

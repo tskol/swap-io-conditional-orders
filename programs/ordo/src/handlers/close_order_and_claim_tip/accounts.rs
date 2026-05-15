@@ -8,7 +8,7 @@ use crate::{
 
 #[event_cpi]
 #[derive(Accounts)]
-pub struct CloseOrderAndClaimTip<'info> {
+pub struct ExitOrderAndClaimTip<'info> {
     #[account(mut)]
     pub closer: Signer<'info>,
 

@@ -3,7 +3,7 @@ use anchor_lang::prelude::*;
 use crate::{
     handlers::{order_events, take_order::permissions::check_permission_and_get_tip},
     operations,
-    state::TakeOrderEffects,
+    state::ExecuteOrderEffects,
 };
 
 mod accounts;
@@ -16,7 +16,7 @@ use transfers::{tip_transfer_and_validation, transfer_output_and_input};
 use validation::{validate_child_order_accounts, validate_take_order_token_extensions};
 
 pub fn handler_take_order(
-    ctx: Context<TakeOrder>,
+    ctx: Context<ExecuteOrder>,
     input_amount: u64,
     min_output_amount: u64,
     tip_amount_permissionless_taking: u64,
@@ -35,7 +35,7 @@ pub fn handler_take_order(
     let order = &mut ctx.accounts.order.load_mut()?;
     let clock = Clock::get()?;
 
-    let TakeOrderEffects {
+    let ExecuteOrderEffects {
         input_to_send_to_taker,
         output_to_send_to_maker,
         output_to_send_to_protocol,

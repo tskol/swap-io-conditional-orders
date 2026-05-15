@@ -6,11 +6,11 @@ use crate::{
 };
 
 use super::{
-    accounts::CreateOrder,
-    types::{CreateOrderArgs, CreateOrderFees},
+    accounts::SubmitOrder,
+    types::{SubmitOrderArgs, SubmitOrderFees},
 };
 
-pub(super) fn validate_token_extensions_for_create_order(ctx: &Context<CreateOrder>) -> Result<()> {
+pub(super) fn validate_token_extensions_for_create_order(ctx: &Context<SubmitOrder>) -> Result<()> {
     validate_token_extensions(
         &ctx.accounts.input_mint.to_account_info(),
         vec![&ctx.accounts.maker_ata.to_account_info()],
@@ -19,9 +19,9 @@ pub(super) fn validate_token_extensions_for_create_order(ctx: &Context<CreateOrd
 }
 
 pub(super) fn validate_order_args_and_calculate_fees(
-    ctx: &Context<CreateOrder>,
-    args: CreateOrderArgs,
-) -> Result<(OrderType, CreateOrderFees)> {
+    ctx: &Context<SubmitOrder>,
+    args: SubmitOrderArgs,
+) -> Result<(OrderType, SubmitOrderFees)> {
     require!(args.input_amount > 0, OrdoError::OrderInputAmountInvalid);
     require!(args.output_amount > 0, OrdoError::OrderOutputAmountInvalid);
     require!(
@@ -39,7 +39,7 @@ pub(super) fn validate_order_args_and_calculate_fees(
     let gc_state = ctx.accounts.global_config.load()?;
     validate_tp_sl_args(args, parsed_order_type, &gc_state)?;
 
-    let fees = CreateOrderFees {
+    let fees = SubmitOrderFees {
         create_order_fee: operations::calculate_fee_amount(
             args.input_amount,
             gc_state.create_order_fee_bps,
@@ -51,7 +51,7 @@ pub(super) fn validate_order_args_and_calculate_fees(
 }
 
 fn validate_tp_sl_args(
-    args: CreateOrderArgs,
+    args: SubmitOrderArgs,
     parsed_order_type: OrderType,
     global_config: &GlobalConfig,
 ) -> Result<()> {

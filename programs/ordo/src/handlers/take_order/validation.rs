@@ -1,11 +1,11 @@
 use anchor_lang::prelude::*;
 
 use crate::{
-    handlers::take_order::TakeOrder, utils::constraints::token_2022::validate_token_extensions,
+    handlers::take_order::ExecuteOrder, utils::constraints::token_2022::validate_token_extensions,
     OrdoError,
 };
 
-pub(super) fn validate_take_order_token_extensions(ctx: &Context<TakeOrder>) -> Result<()> {
+pub(super) fn validate_take_order_token_extensions(ctx: &Context<ExecuteOrder>) -> Result<()> {
     validate_token_extensions(
         &ctx.accounts.input_mint.to_account_info(),
         vec![&ctx.accounts.taker_input_ata.to_account_info()],
@@ -29,7 +29,7 @@ pub(super) fn validate_take_order_token_extensions(ctx: &Context<TakeOrder>) -> 
     Ok(())
 }
 
-pub(super) fn validate_child_order_accounts(ctx: &Context<TakeOrder>) -> Result<(bool, Pubkey)> {
+pub(super) fn validate_child_order_accounts(ctx: &Context<ExecuteOrder>) -> Result<(bool, Pubkey)> {
     let order = &ctx.accounts.order.load()?;
 
     // Child order: require/validate parent, and validate brother iff it exists in the parent.

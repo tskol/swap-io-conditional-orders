@@ -1,5 +1,5 @@
 #[derive(Clone, Copy)]
-pub(super) struct CreateOrderArgs {
+pub(super) struct SubmitOrderArgs {
     pub(super) input_amount: u64,
     pub(super) output_amount: u64,
     pub(super) order_type: u8,
@@ -9,7 +9,7 @@ pub(super) struct CreateOrderArgs {
 }
 
 #[derive(Clone, Copy)]
-pub(super) struct CreateOrderFees {
+pub(super) struct SubmitOrderFees {
     pub(super) create_order_fee: u64,
     pub(super) lamports: u64,
 }

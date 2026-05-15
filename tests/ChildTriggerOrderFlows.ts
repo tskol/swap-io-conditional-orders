@@ -562,7 +562,7 @@ describe("Type B Child Limit Orders", () => {
         it("Should reject fill order when order is expired", async () => {
             await ordoHelper.updateGlobalConfig({
                 payer: payerWallet,
-                mode: UpdateGlobalConfigMode.UpdateAllowedTaker,
+                mode: UpdateGlobalConfigMode.UpdateCounterparty,
                 value: Array.from(taker.publicKey.toBuffer()),
             });
 
@@ -955,7 +955,7 @@ describe("Type B Child Limit Orders", () => {
         it("Should reject fill order when order is expired", async () => {
             await ordoHelper.updateGlobalConfig({
                 payer: payerWallet,
-                mode: UpdateGlobalConfigMode.UpdateAllowedTaker,
+                mode: UpdateGlobalConfigMode.UpdateCounterparty,
                 value: Array.from(taker.publicKey.toBuffer()),
             });
 

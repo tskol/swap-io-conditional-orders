@@ -21,7 +21,7 @@ use fees::pay_allowed_taker_close_fee;
 use validation::{validate_close_order_token_extensions, validate_close_order_type};
 use vaults::return_remaining_order_vaults;
 
-pub fn handler_close_order_and_claim_tip(ctx: Context<CloseOrderAndClaimTip>) -> Result<()> {
+pub fn handler_close_order_and_claim_tip(ctx: Context<ExitOrderAndClaimTip>) -> Result<()> {
     validate_close_order_token_extensions(&ctx)?;
 
     let global_config_key = ctx.accounts.global_config.key();

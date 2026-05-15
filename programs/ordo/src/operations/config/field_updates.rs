@@ -22,7 +22,7 @@ pub(super) fn update_global_config_flag(
             msg!("new={} prev={}", value, global_config.emergency_mode,);
             global_config.emergency_mode = value;
         }
-        UpdateGlobalConfigMode::UpdateFlashTakeOrderBlocked => {
+        UpdateGlobalConfigMode::UpdateFlashExecuteOrderBlocked => {
             msg!(
                 "new={} prev={}",
                 value,
@@ -65,7 +65,7 @@ pub(super) fn update_global_config_bps(
             msg!("new={} prev={}", value, global_config.host_fee_bps);
             global_config.host_fee_bps = value;
         }
-        UpdateGlobalConfigMode::UpdateCreateOrderFeeBps => {
+        UpdateGlobalConfigMode::UpdateSubmitOrderFeeBps => {
             msg!("new={} prev={}", value, global_config.create_order_fee_bps);
             global_config.create_order_fee_bps = value;
         }
@@ -148,7 +148,7 @@ pub(super) fn update_global_config_pubkey(
             );
             global_config.admin_authority_cached = value;
         }
-        UpdateGlobalConfigMode::UpdateAllowedTaker => {
+        UpdateGlobalConfigMode::UpdateCounterparty => {
             msg!("new={} prev={}", value, global_config.allowed_taker,);
             global_config.allowed_taker = value;
         }

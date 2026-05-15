@@ -35,7 +35,7 @@ export const UPDATE_GLOBAL_CONFIG_BYTE_SIZE = 128;
 
 export const UpdateGlobalConfigMode = {
     UpdateEmergencyMode: 0,
-    UpdateFlashTakeOrderBlocked: 1,
+    UpdateFlashExecuteOrderBlocked: 1,
     UpdateBlockNewOrders: 2,
     UpdateBlockOrderTaking: 3,
     UpdateHostFeeBps: 4,
@@ -44,7 +44,7 @@ export const UpdateGlobalConfigMode = {
     UpdateTxnFeeCost: 7,
     UpdateAtaCreationCost: 8,
     UpdateTpSlEnabled: 9,
-    UpdateCreateOrderFeeBps: 10,
+    UpdateSubmitOrderFeeBps: 10,
     UpdateParentFillFeeKeeperBps: 11,
     UpdateParentFillFeeProtocolBps: 12,
     UpdateTpSlChildFeeKeeperBps: 13,
@@ -52,7 +52,7 @@ export const UpdateGlobalConfigMode = {
     UpdateOracleMaxStalenessSeconds: 15,
     UpdateSlMaxUpwardDeviationBps: 16,
     UpdateTpSlMinDistanceBps: 17,
-    UpdateAllowedTaker: 18,
+    UpdateCounterparty: 18,
     UpdateKeeperTakeFeeBps: 19,
     UpdateKeeperCloseFeeBps: 20,
 }
@@ -83,7 +83,7 @@ export const OrdoError = {
     InvalidHostTipBalance: "Host tup amount is less than accounted for",
     OrderWithinFlashOperation: "Order within flash operation - all otehr actions are blocked",
     CPINotAllowed: "CPI not allowed",
-    FlashTakeOrderBlocked: "Flash take_order is blocked",
+    FlashExecuteOrderBlocked: "Flash take_order is blocked",
     FlashTxWithUnexpectedIxs: "Some unexpected instructions are present in the tx. Either before or after the flash ixs, or some ix target the same program between",
     FlashIxsNotEnded: "Flash ixs initiated without the closing ix in the transaction",
     FlashIxsNotStarted: "Flash ixs ended without the starting ix in the transaction",

@@ -1,5 +1,5 @@
 {
-  "name": "swap-io-limits-bch",
+  "name": "swap-io-conditional-orders",
   "version": "1.0.0",
   "license": "ISC",
   "devDependencies": {

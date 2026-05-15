@@ -104,7 +104,7 @@ LIMO is an order-based swap/matching program that lets a **maker** create an ord
 | Mode (name)                      | Value type | Encoding      | Description |
 |----------------------------------|------------|---------------|-------------|
 | 0  UpdateEmergencyMode           | bool       | 1 byte: 0 or 1 | Emergency switch. |
-| 1  UpdateFlashTakeOrderBlocked   | bool       | 1 byte        | Block flash take (unused in this build). |
+| 1  UpdateFlashExecuteOrderBlocked   | bool       | 1 byte        | Block flash take (unused in this build). |
 | 2  UpdateBlockNewOrders          | bool       | 1 byte        | Block new orders. |
 | 3  UpdateBlockOrderTaking        | bool       | 1 byte        | Block taking orders. |
 | 4  UpdateHostFeeBps              | u16        | 2 bytes LE    | Host share of tip (0–10000 BPS). |
@@ -113,7 +113,7 @@ LIMO is an order-based swap/matching program that lets a **maker** create an ord
 | 7  UpdateTxnFeeCost              | u64        | 8 bytes LE    | Lamport cost assumed per txn. |
 | 8  UpdateAtaCreationCost         | u64        | 8 bytes LE    | Lamport cost for ATA creation. |
 | 9  UpdateTpSlEnabled             | bool       | 1 byte        | Allow TP/SL child orders. |
-| 10 UpdateCreateOrderFeeBps       | u16        | 2 bytes LE    | Fee on create order (0–10000 BPS). |
+| 10 UpdateSubmitOrderFeeBps       | u16        | 2 bytes LE    | Fee on create order (0–10000 BPS). |
 | 11 UpdateParentFillFeeKeeperBps  | u16        | 2 bytes LE    | Keeper fee BPS on parent fill. |
 | 12 UpdateParentFillFeeProtocolBps| u16        | 2 bytes LE    | Protocol fee BPS on parent fill. |
 | 13 UpdateTpSlChildFeeKeeperBps   | u16        | 2 bytes LE    | Keeper fee BPS on TP/SL child fill. |
@@ -121,7 +121,7 @@ LIMO is an order-based swap/matching program that lets a **maker** create an ord
 | 15 UpdateOracleMaxStalenessSeconds | u64     | 8 bytes LE    | Max oracle age for price checks. |
 | 16 UpdateSlMaxUpwardDeviationBps | u16        | 2 bytes LE    | SL max upward price deviation (BPS). |
 | 17 UpdateTpSlMinDistanceBps       | u16        | 2 bytes LE    | Min distance between TP/SL and parent (BPS). |
-| 18 UpdateAllowedTaker            | pubkey     | 32 bytes      | Global allowed taker when order has no counterparty. |
+| 18 UpdateCounterparty            | pubkey     | 32 bytes      | Global allowed taker when order has no counterparty. |
 
 #### `update_global_config_admin`
 
@@ -256,21 +256,21 @@ Notes:
 
 ```bash
 anchor run initializeGlobalConfig
-anchor run InitializeOraclePool
-anchor run InitializeVault
-anchor run CreateOrder
-anchor run TakeOrder
-anchor run CloseOrder
+anchor run ConfigureOraclePool
+anchor run ConfigureVault
+anchor run SubmitOrder
+anchor run ExecuteOrder
+anchor run ExitOrder
 ```
 
 Scripts live in:
 
-- `scripts/InitializeGlobalConfig.ts`
-- `scripts/InitializeOraclePool.ts`
-- `scripts/InitializeVault.ts`
-- `scripts/CreateOrder.ts`
-- `scripts/TakeOrder.ts`
-- `scripts/CloseOrder.ts`
+- `scripts/BootstrapGlobalConfig.ts`
+- `scripts/ConfigureOraclePool.ts`
+- `scripts/ConfigureVault.ts`
+- `scripts/SubmitOrder.ts`
+- `scripts/ExecuteOrder.ts`
+- `scripts/ExitOrder.ts`
 
 ## IDL
 

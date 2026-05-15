@@ -54,7 +54,7 @@ fn update_global_config_sets_flags() {
 
     for mode in [
         UpdateGlobalConfigMode::UpdateEmergencyMode,
-        UpdateGlobalConfigMode::UpdateFlashTakeOrderBlocked,
+        UpdateGlobalConfigMode::UpdateFlashExecuteOrderBlocked,
         UpdateGlobalConfigMode::UpdateBlockNewOrders,
         UpdateGlobalConfigMode::UpdateBlockOrderTaking,
         UpdateGlobalConfigMode::UpdateTpSlEnabled,
@@ -79,7 +79,7 @@ fn update_global_config_sets_bps_fields() {
 
     for (mode, value) in [
         (UpdateGlobalConfigMode::UpdateHostFeeBps, 11),
-        (UpdateGlobalConfigMode::UpdateCreateOrderFeeBps, 12),
+        (UpdateGlobalConfigMode::UpdateSubmitOrderFeeBps, 12),
         (UpdateGlobalConfigMode::UpdateParentFillFeeKeeperBps, 13),
         (UpdateGlobalConfigMode::UpdateParentFillFeeProtocolBps, 14),
         (UpdateGlobalConfigMode::UpdateTpSlChildFeeKeeperBps, 15),
@@ -133,7 +133,7 @@ fn update_global_config_sets_u64_and_pubkey_fields() {
     );
     update_config(
         &mut global_config,
-        UpdateGlobalConfigMode::UpdateAllowedTaker,
+        UpdateGlobalConfigMode::UpdateCounterparty,
         UpdateGlobalConfigValue::Pubkey(allowed_taker),
     );
 

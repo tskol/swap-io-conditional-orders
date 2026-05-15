@@ -8,4 +8,4 @@ pub use balances::{GetBalancesCheckedResult, UserSwapBalanceDiffs, UserSwapBalan
 pub use config::{GlobalConfig, UpdateGlobalConfigValue};
 pub use enums::{OrderStatus, OrderType, UpdateGlobalConfigMode, UpdateOrderMode};
 pub use oracle::OraclePoolsState;
-pub use order::{Order, OrderDisplay, TakeOrderEffects, TipCalcs};
+pub use order::{Order, OrderDisplay, ExecuteOrderEffects, TipCalcs};

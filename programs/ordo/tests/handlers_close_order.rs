@@ -10,7 +10,7 @@ use common::{
     TestAccount,
 };
 use ordo::{
-    handlers::close_order_and_claim_tip::{CloseOrderAndClaimTip, CloseOrderAndClaimTipBumps},
+    handlers::close_order_and_claim_tip::{ExitOrderAndClaimTip, ExitOrderAndClaimTipBumps},
     operations::create_order,
     ordo as program,
     state::{GlobalConfig, Order, OrderStatus, OrderType},
@@ -117,7 +117,7 @@ fn close_order_handler_cancels_vanilla_order_without_transfers() {
     let event_authority_info = event_authority.info();
     let program_info = program.info();
 
-    let mut accounts = CloseOrderAndClaimTip {
+    let mut accounts = ExitOrderAndClaimTip {
         closer: Signer::try_from(&closer_info).unwrap(),
         maker: maker_info,
         order: AccountLoader::try_from(&order_info).unwrap(),
@@ -149,7 +149,7 @@ fn close_order_handler_cancels_vanilla_order_without_transfers() {
         &program_id,
         &mut accounts,
         &[],
-        CloseOrderAndClaimTipBumps {
+        ExitOrderAndClaimTipBumps {
             input_vault: 254,
             output_vault: 0,
             event_authority: 253,
@@ -310,7 +310,7 @@ fn close_order_handler_cancels_parent_and_children_with_vault_returns() {
     let event_authority_info = event_authority.info();
     let program_info = program.info();
 
-    let mut accounts = CloseOrderAndClaimTip {
+    let mut accounts = ExitOrderAndClaimTip {
         closer: Signer::try_from(&closer_info).unwrap(),
         maker: maker_info,
         order: AccountLoader::try_from(&order_info).unwrap(),
@@ -346,7 +346,7 @@ fn close_order_handler_cancels_parent_and_children_with_vault_returns() {
         &program_id,
         &mut accounts,
         &[],
-        CloseOrderAndClaimTipBumps {
+        ExitOrderAndClaimTipBumps {
             input_vault: 254,
             output_vault: 253,
             event_authority: 252,
@@ -459,7 +459,7 @@ fn close_order_handler_pays_allowed_taker_fee_from_remaining_input() {
     let event_authority_info = event_authority.info();
     let program_info = program.info();
 
-    let mut accounts = CloseOrderAndClaimTip {
+    let mut accounts = ExitOrderAndClaimTip {
         closer: Signer::try_from(&closer_info).unwrap(),
         maker: maker_info,
         order: AccountLoader::try_from(&order_info).unwrap(),
@@ -493,7 +493,7 @@ fn close_order_handler_pays_allowed_taker_fee_from_remaining_input() {
         &program_id,
         &mut accounts,
         &[],
-        CloseOrderAndClaimTipBumps {
+        ExitOrderAndClaimTipBumps {
             input_vault: 254,
             output_vault: 0,
             event_authority: 253,
@@ -635,7 +635,7 @@ fn close_order_handler_pays_allowed_taker_fee_from_child_output() {
     let event_authority_info = event_authority.info();
     let program_info = program.info();
 
-    let mut accounts = CloseOrderAndClaimTip {
+    let mut accounts = ExitOrderAndClaimTip {
         closer: Signer::try_from(&closer_info).unwrap(),
         maker: maker_info,
         order: AccountLoader::try_from(&order_info).unwrap(),
@@ -671,7 +671,7 @@ fn close_order_handler_pays_allowed_taker_fee_from_child_output() {
         &program_id,
         &mut accounts,
         &[],
-        CloseOrderAndClaimTipBumps {
+        ExitOrderAndClaimTipBumps {
             input_vault: 254,
             output_vault: 253,
             event_authority: 252,

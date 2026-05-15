@@ -2,12 +2,12 @@ use anchor_lang::prelude::*;
 
 use crate::{operations, state::Order, OrderType, OrdoError};
 
-use super::{accounts::CreateOrder, types::CreateOrderArgs};
+use super::{accounts::SubmitOrder, types::SubmitOrderArgs};
 
 pub(super) fn initialize_parent_order(
-    ctx: &Context<CreateOrder>,
+    ctx: &Context<SubmitOrder>,
     order: &mut Order,
-    args: CreateOrderArgs,
+    args: SubmitOrderArgs,
     current_timestamp: i64,
 ) -> Result<()> {
     operations::create_order(
@@ -29,10 +29,10 @@ pub(super) fn initialize_parent_order(
 }
 
 pub(super) fn initialize_child_orders(
-    ctx: &Context<CreateOrder>,
+    ctx: &Context<SubmitOrder>,
     order: &mut Order,
     parsed_order_type: OrderType,
-    args: CreateOrderArgs,
+    args: SubmitOrderArgs,
     current_timestamp: i64,
 ) -> Result<()> {
     if parsed_order_type != OrderType::LimitParent {
@@ -93,9 +93,9 @@ struct ChildOrderSpec<'a, 'info> {
 }
 
 fn initialize_child_order(
-    ctx: &Context<CreateOrder>,
+    ctx: &Context<SubmitOrder>,
     spec: ChildOrderSpec,
-    args: CreateOrderArgs,
+    args: SubmitOrderArgs,
     current_timestamp: i64,
 ) -> Result<Pubkey> {
     let child_order = &mut spec.account.load_init()?;

@@ -15,7 +15,7 @@ use common::{
     zero_copy_account_data, TestAccount,
 };
 use ordo::{
-    handlers::take_order::{TakeOrder, TakeOrderBumps},
+    handlers::take_order::{ExecuteOrder, ExecuteOrderBumps},
     operations::create_order,
     ordo as program,
     state::{GlobalConfig, Order, OrderStatus, OrderType},
@@ -245,7 +245,7 @@ fn take_order_handler_fills_vanilla_order_partially() {
         program.info(),
     );
 
-    let mut accounts = TakeOrder {
+    let mut accounts = ExecuteOrder {
         taker: Signer::try_from(&taker_info).unwrap(),
         maker: maker_info,
         global_config: AccountLoader::try_from(&global_config_info).unwrap(),
@@ -290,7 +290,7 @@ fn take_order_handler_fills_vanilla_order_partially() {
         &program_id,
         &mut accounts,
         &[],
-        TakeOrderBumps {
+        ExecuteOrderBumps {
             output_vault: 0,
             output_fee_vault: 253,
             output_oracle_pool: 0,
@@ -419,7 +419,7 @@ fn take_order_handler_fills_wsol_output_through_intermediary_account() {
     let event_authority_info = event_authority.info();
     let program_info = program.info();
 
-    let mut accounts = TakeOrder {
+    let mut accounts = ExecuteOrder {
         taker: Signer::try_from(&taker_info).unwrap(),
         maker: maker_info,
         global_config: AccountLoader::try_from(&global_config_info).unwrap(),
@@ -464,7 +464,7 @@ fn take_order_handler_fills_wsol_output_through_intermediary_account() {
         &program_id,
         &mut accounts,
         &[],
-        TakeOrderBumps {
+        ExecuteOrderBumps {
             output_vault: 0,
             output_fee_vault: 253,
             output_oracle_pool: 0,
@@ -617,7 +617,7 @@ fn take_order_handler_fills_limit_parent_into_output_vault() {
         program.info(),
     );
 
-    let mut accounts = TakeOrder {
+    let mut accounts = ExecuteOrder {
         taker: Signer::try_from(&taker_info).unwrap(),
         maker: maker_info,
         global_config: AccountLoader::try_from(&global_config_info).unwrap(),
@@ -662,7 +662,7 @@ fn take_order_handler_fills_limit_parent_into_output_vault() {
         &program_id,
         &mut accounts,
         &[],
-        TakeOrderBumps {
+        ExecuteOrderBumps {
             output_vault: 252,
             output_fee_vault: 253,
             output_oracle_pool: 0,
@@ -859,7 +859,7 @@ fn take_order_handler_fills_child_and_marks_brother_filled() {
         program.info(),
     );
 
-    let mut accounts = TakeOrder {
+    let mut accounts = ExecuteOrder {
         taker: Signer::try_from(&taker_info).unwrap(),
         maker: maker_info,
         global_config: AccountLoader::try_from(&global_config_info).unwrap(),
@@ -904,7 +904,7 @@ fn take_order_handler_fills_child_and_marks_brother_filled() {
         &program_id,
         &mut accounts,
         &[],
-        TakeOrderBumps {
+        ExecuteOrderBumps {
             output_vault: 0,
             output_fee_vault: 253,
             output_oracle_pool: 0,

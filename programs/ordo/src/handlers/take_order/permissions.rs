@@ -1,11 +1,11 @@
 use anchor_lang::prelude::*;
 
 use crate::{
-    handlers::take_order::TakeOrder, utils::constraints::is_counterparty_matching, OrdoError,
+    handlers::take_order::ExecuteOrder, utils::constraints::is_counterparty_matching, OrdoError,
 };
 
 pub(super) fn check_permission_and_get_tip(
-    ctx: &Context<TakeOrder>,
+    ctx: &Context<ExecuteOrder>,
     order_counterparty: &Pubkey,
     allowed_taker: &Pubkey,
     tip_amount_permissionless_taking: u64,

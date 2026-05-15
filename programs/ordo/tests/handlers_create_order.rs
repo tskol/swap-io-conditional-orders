@@ -10,7 +10,7 @@ use common::{
     zeroed_zero_copy_account_data, TestAccount,
 };
 use ordo::{
-    handlers::create_order::{CreateOrder, CreateOrderBumps},
+    handlers::create_order::{SubmitOrder, SubmitOrderBumps},
     ordo as program,
     state::{GlobalConfig, Order, OrderStatus, OrderType},
 };
@@ -82,7 +82,7 @@ fn create_order_handler_initializes_vanilla_order() {
     let event_authority_info = event_authority.info();
     let program_info = program.info();
 
-    let mut accounts = CreateOrder {
+    let mut accounts = SubmitOrder {
         maker: Signer::try_from(&maker_info).unwrap(),
         global_config: AccountLoader::try_from(&global_config_info).unwrap(),
         pda_authority: pda_authority_info,
@@ -111,7 +111,7 @@ fn create_order_handler_initializes_vanilla_order() {
         &program_id,
         &mut accounts,
         &[],
-        CreateOrderBumps {
+        SubmitOrderBumps {
             input_vault: 254,
             input_fee_vault: 253,
             output_vault: 0,
@@ -211,7 +211,7 @@ fn create_order_handler_initializes_parent_and_child_orders() {
     let event_authority_info = event_authority.info();
     let program_info = program.info();
 
-    let mut accounts = CreateOrder {
+    let mut accounts = SubmitOrder {
         maker: Signer::try_from(&maker_info).unwrap(),
         global_config: AccountLoader::try_from(&global_config_info).unwrap(),
         pda_authority: pda_authority_info,
@@ -242,7 +242,7 @@ fn create_order_handler_initializes_parent_and_child_orders() {
         &program_id,
         &mut accounts,
         &[],
-        CreateOrderBumps {
+        SubmitOrderBumps {
             input_vault: 254,
             input_fee_vault: 253,
             output_vault: 252,

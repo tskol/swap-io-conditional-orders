@@ -63,7 +63,7 @@ pub struct OrderDisplay {
     pub last_updated_timestamp: u64,
 }
 
-pub struct TakeOrderEffects {
+pub struct ExecuteOrderEffects {
     pub input_to_send_to_taker: u64,
     pub output_to_send_to_maker: u64,
     pub output_to_send_to_protocol: u64,

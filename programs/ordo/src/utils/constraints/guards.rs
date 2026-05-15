@@ -12,7 +12,7 @@ pub fn emergency_mode_disabled(global_config: &AccountLoader<GlobalConfig>) -> R
 pub fn flash_taking_orders_disabled(global_config: &AccountLoader<GlobalConfig>) -> Result<()> {
     guard_disabled_flag(
         global_config.load()?.flash_take_order_blocked,
-        OrdoError::FlashTakeOrderBlocked,
+        OrdoError::FlashExecuteOrderBlocked,
     )
 }
 

@@ -3,7 +3,7 @@ use pyth_solana_receiver_sdk::price_update::PriceUpdateV2;
 use solana_program::clock;
 
 use crate::{
-    state::{GlobalConfig, OraclePoolsState, Order, TakeOrderEffects},
+    state::{GlobalConfig, OraclePoolsState, Order, ExecuteOrderEffects},
     OrdoError,
 };
 
@@ -31,13 +31,13 @@ pub fn take_order(
     tip_amount: u64,
     current_timestamp: clock::UnixTimestamp,
     output_amount: u64,
-) -> Result<TakeOrderEffects> {
+) -> Result<ExecuteOrderEffects> {
     require!(
         order.flash_ix_lock == 0,
         OrdoError::OrderWithinFlashOperation
     );
 
-    let TakeOrderEffects {
+    let ExecuteOrderEffects {
         input_to_send_to_taker,
         output_to_send_to_maker,
         output_to_send_to_protocol,
@@ -76,7 +76,7 @@ pub fn take_order(
         )?;
     }
 
-    Ok(TakeOrderEffects {
+    Ok(ExecuteOrderEffects {
         input_to_send_to_taker,
         output_to_send_to_maker,
         output_to_send_to_protocol,

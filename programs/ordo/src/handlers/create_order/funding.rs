@@ -3,12 +3,12 @@ use solana_program::{program::invoke, system_instruction};
 
 use crate::token_operations::transfer_from_user_to_token_account;
 
-use super::{accounts::CreateOrder, types::CreateOrderFees};
+use super::{accounts::SubmitOrder, types::SubmitOrderFees};
 
 pub(super) fn fund_order_accounts(
-    ctx: &Context<CreateOrder>,
+    ctx: &Context<SubmitOrder>,
     input_amount: u64,
-    fees: CreateOrderFees,
+    fees: SubmitOrderFees,
 ) -> Result<()> {
     transfer_from_user_to_token_account(
         ctx.accounts.maker_ata.to_account_info(),

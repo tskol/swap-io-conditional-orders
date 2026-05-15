@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 
 use crate::{
     dbg_msg,
-    state::{GlobalConfig, Order, OrderStatus, OrderType, TakeOrderEffects},
+    state::{GlobalConfig, Order, OrderStatus, OrderType, ExecuteOrderEffects},
     utils::fraction::{Fraction, FractionExtra},
     OrdoError,
 };
@@ -12,7 +12,7 @@ pub fn take_order_calcs(
     global_config: &GlobalConfig,
     input_amount: u64,
     output_amount: u64,
-) -> Result<TakeOrderEffects> {
+) -> Result<ExecuteOrderEffects> {
     require!(input_amount > 0, OrdoError::OrderInputAmountInvalid);
 
     require!(
@@ -93,7 +93,7 @@ pub fn take_order_calcs(
     msg!("output_to_send_to_protocol: {}", output_to_send_to_protocol);
     msg!("output_keeper_fee: {}", output_keeper_fee);
 
-    Ok(TakeOrderEffects {
+    Ok(ExecuteOrderEffects {
         input_to_send_to_taker,
         output_to_send_to_maker,
         output_to_send_to_protocol,

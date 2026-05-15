@@ -11,13 +11,13 @@ mod validation;
 pub use accounts::*;
 use funding::fund_order_accounts;
 use order_init::{initialize_child_orders, initialize_parent_order};
-use types::CreateOrderArgs;
+use types::SubmitOrderArgs;
 use validation::{
     validate_order_args_and_calculate_fees, validate_token_extensions_for_create_order,
 };
 
 pub fn handler_create_order(
-    ctx: Context<CreateOrder>,
+    ctx: Context<SubmitOrder>,
     input_amount: u64,
     output_amount: u64,
     order_type: u8,
@@ -25,7 +25,7 @@ pub fn handler_create_order(
     sl_output_amount: u64,
     active_duration_seconds: u64,
 ) -> Result<()> {
-    let args = CreateOrderArgs {
+    let args = SubmitOrderArgs {
         input_amount,
         output_amount,
         order_type,

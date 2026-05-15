@@ -1,12 +1,12 @@
 use anchor_lang::prelude::*;
 
 use crate::{
-    handlers::close_order_and_claim_tip::CloseOrderAndClaimTip, state::OrderType,
+    handlers::close_order_and_claim_tip::ExitOrderAndClaimTip, state::OrderType,
     utils::constraints::token_2022::validate_token_extensions, OrdoError,
 };
 
 pub(super) fn validate_close_order_token_extensions(
-    ctx: &Context<CloseOrderAndClaimTip>,
+    ctx: &Context<ExitOrderAndClaimTip>,
 ) -> Result<()> {
     validate_token_extensions(
         &ctx.accounts.input_mint.to_account_info(),

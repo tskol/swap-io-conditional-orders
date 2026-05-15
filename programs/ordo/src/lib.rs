@@ -22,12 +22,12 @@ declare_id!("EfsKVSxQxwoR9NpZfjgWuuwpbbF14BQgrh3rt4kAs181");
 
 #[cfg(not(feature = "no-entrypoint"))]
 solana_security_txt::security_txt! {
-    name: "swap-io-conditional-orders-v1",
+    name: "swap-io-conditional-orders",
     project_url: "https://swap.io",
     contacts: "link:https://swap.io/contact",
-    policy: "https://github.com/swap-dot-io/swap-io-conditional-orders-v1/SECURITY.md",
+    policy: "https://github.com/swap-dot-io/swap-io-conditional-orders/SECURITY.md",
 
-    source_code: "https://github.com/swap-dot-io/swap-io-conditional-orders-v1",
+    source_code: "https://github.com/swap-dot-io/swap-io-conditional-orders",
     preferred_languages: "en"
 }
 
@@ -55,7 +55,7 @@ pub mod ordo {
     #[access_control(create_new_orders_disabled(&ctx.accounts.global_config))]
     #[access_control(emergency_mode_disabled(&ctx.accounts.global_config))]
     pub fn create_order(
-        ctx: Context<CreateOrder>,
+        ctx: Context<SubmitOrder>,
         input_amount: u64,
         output_amount: u64,
         order_type: u8,
@@ -85,7 +85,7 @@ pub mod ordo {
     }
 
     #[access_control(emergency_mode_disabled(&ctx.accounts.global_config))]
-    pub fn close_order_and_claim_tip(ctx: Context<CloseOrderAndClaimTip>) -> Result<()> {
+    pub fn close_order_and_claim_tip(ctx: Context<ExitOrderAndClaimTip>) -> Result<()> {
         handlers::close_order_and_claim_tip::handler_close_order_and_claim_tip(ctx)
     }
 
@@ -93,7 +93,7 @@ pub mod ordo {
     #[access_control(emergency_mode_disabled(&ctx.accounts.global_config))]
     #[access_control(order_expired(&ctx.accounts.order))]
     pub fn take_order(
-        ctx: Context<TakeOrder>,
+        ctx: Context<ExecuteOrder>,
         input_amount: u64,
         min_output_amount: u64,
         tip_amount_permissionless_taking: u64,

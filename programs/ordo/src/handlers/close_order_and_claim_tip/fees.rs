@@ -1,14 +1,14 @@
 use anchor_lang::prelude::*;
 
 use crate::{
-    handlers::close_order_and_claim_tip::CloseOrderAndClaimTip,
+    handlers::close_order_and_claim_tip::ExitOrderAndClaimTip,
     operations,
     state::{GlobalConfig, Order},
     OrdoError,
 };
 
 pub(super) fn pay_allowed_taker_close_fee(
-    ctx: &Context<CloseOrderAndClaimTip>,
+    ctx: &Context<ExitOrderAndClaimTip>,
     global_config: &GlobalConfig,
     order: &mut Order,
     seeds: &[&[u8]],
@@ -64,7 +64,7 @@ pub(super) fn pay_allowed_taker_close_fee(
     Ok(())
 }
 
-pub(super) fn child_initial_input_amount(ctx: &Context<CloseOrderAndClaimTip>) -> Result<u64> {
+pub(super) fn child_initial_input_amount(ctx: &Context<ExitOrderAndClaimTip>) -> Result<u64> {
     if let Some(ref loader) = ctx.accounts.tp_child_order {
         Ok(loader.load()?.initial_input_amount)
     } else if let Some(ref loader) = ctx.accounts.sl_child_order {

@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 
 use crate::{
     handlers::{
-        close_order_and_claim_tip::{close_flow::close_order_and_claim_tip, CloseOrderAndClaimTip},
+        close_order_and_claim_tip::{close_flow::close_order_and_claim_tip, ExitOrderAndClaimTip},
         order_events,
     },
     state::{GlobalConfig, Order},
@@ -10,7 +10,7 @@ use crate::{
 };
 
 pub(super) fn close_child_order_and_emit(
-    ctx: &Context<CloseOrderAndClaimTip>,
+    ctx: &Context<ExitOrderAndClaimTip>,
     child_order_loader: Option<&AccountLoader<'_, Order>>,
     expected_child_order: Pubkey,
     global_config: &mut GlobalConfig,

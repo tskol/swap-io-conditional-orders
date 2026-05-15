@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 
 use crate::{
     global_seeds,
-    handlers::take_order::TakeOrder,
+    handlers::take_order::ExecuteOrder,
     intermediary_seeds,
     operations::validate_pda_authority_balance_and_update_accounting,
     seeds::{GLOBAL_AUTH, INTERMEDIARY_OUTPUT_TOKEN_ACCOUNT},
@@ -18,7 +18,7 @@ use crate::{
 };
 
 pub(super) fn transfer_output_and_input(
-    ctx: &Context<TakeOrder>,
+    ctx: &Context<ExecuteOrder>,
     global_config: &mut GlobalConfig,
     order_type: u8,
     input_to_send_to_taker: u64,
@@ -131,7 +131,7 @@ pub(super) fn transfer_output_and_input(
 }
 
 pub(super) fn tip_transfer_and_validation(
-    ctx: &Context<TakeOrder>,
+    ctx: &Context<ExecuteOrder>,
     global_config: &mut GlobalConfig,
     tip: u64,
 ) -> Result<()> {
