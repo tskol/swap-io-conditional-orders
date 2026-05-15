@@ -1,7 +1,7 @@
 import * as anchor from "@coral-xyz/anchor";
 import * as spl from "@solana/spl-token";
 import { Idl, web3 } from "@coral-xyz/anchor";
-import { TransactionSender } from "./transaction-sender";
+import { TransactionSender } from "./tx-runner";
 
 export type EventName<T extends Idl> = keyof anchor.IdlEvents<T>;
 export type EventFields<

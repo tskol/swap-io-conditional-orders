@@ -1,4 +1,4 @@
-import { OrderType } from "../tests/helpers/constants";
+import { OrderType } from "../tests/support/ordo-constants";
 import {
   requirePublicKey,
   SCRIPT_INPUT_AMOUNT,

@@ -1,8 +1,8 @@
 import * as anchor from "@coral-xyz/anchor";
 import * as spl from "@solana/spl-token";
 import { web3 } from "@coral-xyz/anchor";
-import { OrdoHelper } from "./ordo";
-import { airdrop, createMintWithInitialBalance } from "./utils";
+import { OrdoHelper } from "./ordo-client";
+import { airdrop, createMintWithInitialBalance } from "./token-fixtures";
 
 export const STABLE_PRICE_FEED =
   "0x8b1e8e689fbb95ece35155a8b42cb9f1b14208a2f6507866a9a90e8dc955289a";

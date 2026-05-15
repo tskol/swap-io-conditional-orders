@@ -4,13 +4,17 @@ import IDL from "../../target/idl/ordo.json";
 import { BN, web3 } from "@coral-xyz/anchor";
 import { SYSVAR_INSTRUCTIONS_PUBKEY } from "@solana/web3.js";
 import { Ordo } from "../../target/types/ordo";
-import { findLargestTokenAccount } from "./utils";
+import { findLargestTokenAccount } from "./token-fixtures";
 import { Price, PriceServiceConnection } from "@pythnetwork/price-service-client";
-import { TransactionSender } from "./transaction-sender";
+import { TransactionSender } from "./tx-runner";
 import { Wallet } from "@coral-xyz/anchor";
 import { findMintScopedPda, findPdaAuthority } from "./ordo/pdas";
 import { executeStopLossOrder, encodeFeedId } from "./ordo/stop-loss";
-import { getMintTokenProgram, getOwnerAta, getTokenPairPrograms } from "./ordo/token-context";
+import {
+  getMintTokenProgram,
+  getOwnerAta,
+  getTokenPairPrograms,
+} from "./ordo/token-context";
 import {
   GLOBAL_CONFIG_SIZE,
   ORDER_SIZE,
@@ -23,7 +27,7 @@ import {
   ORACLE_POOL_SEED,
   UPDATE_GLOBAL_CONFIG_BYTE_SIZE,
   UpdateOrderMode,
-} from "./constants";
+} from "./ordo-constants";
 
 export type GlobalConfigAccount = anchor.IdlAccounts<Ordo>["globalConfig"];
 export type OraclePoolAccount = anchor.IdlAccounts<Ordo>["oraclePoolsState"];

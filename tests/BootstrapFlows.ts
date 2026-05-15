@@ -2,13 +2,13 @@ import * as anchor from "@coral-xyz/anchor";
 import * as spl from "@solana/spl-token";
 import { web3, BN } from "@coral-xyz/anchor";
 import { expect } from "chai";
-import { OrdoHelper } from "./helpers/ordo";
+import { OrdoHelper } from "./support/ordo-client";
 import {
   createFlowActors,
   createFlowProvider,
   ensureLocalValidator,
   STABLE_PRICE_FEED,
-} from "./helpers/flow-setup";
+} from "./support/flow-environment";
 
 describe("BootstrapFlows", () => {
   const { connection, provider } = createFlowProvider();

@@ -2,22 +2,22 @@ import * as anchor from "@coral-xyz/anchor";
 import * as spl from "@solana/spl-token";
 import { web3, BN } from "@coral-xyz/anchor";
 import { expect } from "chai";
-import { OrdoHelper } from "./helpers/ordo";
-import { expectRejects } from "./helpers/utils";
+import { OrdoHelper } from "./support/ordo-client";
+import { expectRejects } from "./support/token-fixtures";
 import {
   bootstrapOrderFlow,
   createFlowActors,
   createFlowProvider,
   ensureLocalValidator,
   STABLE_PRICE_FEED,
-} from "./helpers/flow-setup";
+} from "./support/flow-environment";
 import {
   OrderStatus,
   OrderType,
   OrdoError,
   UpdateGlobalConfigMode,
   UpdateOrderMode,
-} from "./helpers/constants";
+} from "./support/ordo-constants";
 
 describe("Safe cancellation and full unwind", () => {
   const { connection, provider } = createFlowProvider();

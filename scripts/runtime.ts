@@ -1,6 +1,6 @@
 import * as anchor from "@coral-xyz/anchor";
 import { web3 } from "@coral-xyz/anchor";
-import { OrdoHelper } from "../tests/helpers/ordo";
+import { OrdoHelper } from "../tests/support/ordo-client";
 import {
   requirePublicKey,
   SCRIPT_COMMITMENT,

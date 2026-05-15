@@ -1,4 +1,4 @@
-import { UpdateGlobalConfigMode } from "../tests/helpers/constants";
+import { UpdateGlobalConfigMode } from "../tests/support/ordo-constants";
 import {
   requirePublicKey,
   SCRIPT_ALLOWED_TAKER,
