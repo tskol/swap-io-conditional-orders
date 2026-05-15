@@ -3,47 +3,21 @@ import * as spl from "@solana/spl-token";
 import { web3, BN } from "@coral-xyz/anchor";
 import { expect } from "chai";
 import { OrdoHelper } from "./helpers/ordo";
-import { airdrop } from "./helpers/utils";
-
-export const STABLE_PRICE_FEED =
-  "0x8b1e8e689fbb95ece35155a8b42cb9f1b14208a2f6507866a9a90e8dc955289a";
+import {
+  createFlowActors,
+  createFlowProvider,
+  ensureLocalValidator,
+  STABLE_PRICE_FEED,
+} from "./helpers/flow-setup";
 
 describe("BootstrapFlows", () => {
-  const commitment: web3.Commitment = "confirmed";
-  const envProvider = anchor.AnchorProvider.env();
-  const connection = new web3.Connection(
-    envProvider.connection.rpcEndpoint,
-    commitment,
-  );
-  const provider = new anchor.AnchorProvider(connection, envProvider.wallet, {
-    commitment,
-    preflightCommitment: commitment,
-  });
-  anchor.setProvider(provider);
-
-  const payer = web3.Keypair.generate();
-  const payerWallet = new anchor.Wallet(payer);
+  const { connection, provider } = createFlowProvider();
+  const { payer, payerWallet } = createFlowActors();
 
   const ordoHelper = new OrdoHelper(provider);
 
   before(async function () {
-    // Check if validator is running
-    try {
-      await connection.getVersion();
-    } catch (error: any) {
-      if (
-        error.message?.includes("ECONNREFUSED") ||
-        error.message?.includes("fetch failed")
-      ) {
-        throw new Error(
-          "Local Solana validator is not running. " +
-            "Please start it with: solana-test-validator " +
-            "or use 'anchor test' which handles this automatically.",
-        );
-      }
-      throw error;
-    }
-    await airdrop(payer.publicKey, 10 * web3.LAMPORTS_PER_SOL);
+    await ensureLocalValidator(connection);
   });
 
   describe("Initialize Global Config", () => {
