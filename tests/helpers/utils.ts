@@ -47,45 +47,6 @@ export async function findLargestTokenAccount(args: {
   return largestTokenAccount;
 }
 
-export function generateRandomOrdoAccounts() {
-  const adminKeypair = web3.Keypair.generate();
-  const adminWallet = new anchor.Wallet(adminKeypair);
-  const admin = adminKeypair.publicKey;
-
-  const treasuryKeypair = web3.Keypair.generate();
-  const treasuryWallet = new anchor.Wallet(treasuryKeypair);
-  const treasury = treasuryKeypair.publicKey;
-
-  const yieldClaimerKeypair = web3.Keypair.generate();
-  const yieldClaimerWallet = new anchor.Wallet(yieldClaimerKeypair);
-  const yieldClaimer = yieldClaimerKeypair.publicKey;
-
-  const strategyManagerKeypair = web3.Keypair.generate();
-  const strategyManagerWallet = new anchor.Wallet(strategyManagerKeypair);
-  const strategyManager = strategyManagerKeypair.publicKey;
-
-  return {
-    publicKeys: {
-      admin,
-      treasury,
-      yieldClaimer,
-      strategyManager,
-    },
-    keypairs: {
-      admin: adminKeypair,
-      treasury: treasuryKeypair,
-      yieldClaimer: yieldClaimerKeypair,
-      strategyManager: strategyManagerKeypair,
-    },
-    wallets: {
-      admin: adminWallet,
-      treasury: treasuryWallet,
-      yieldClaimer: yieldClaimerWallet,
-      strategyManager: strategyManagerWallet,
-    },
-  };
-}
-
 export async function createMintWithInitialBalance(args: {
   connection: web3.Connection;
   payer: web3.Keypair;
@@ -151,11 +112,11 @@ export async function expectRejects<T>(promise: Promise<T>, withError: string) {
   await promise.then(
     () => Promise.reject(new Error("Expected to error")),
     (e: web3.SendTransactionError) => {
-        if (e.logs) {
-            assert.ok(e.logs.some((log) => log.includes(withError)));
-        } else {
-            assert.fail("No logs found");
-        }
+      if (e.logs) {
+        assert.ok(e.logs.some((log) => log.includes(withError)));
+      } else {
+        assert.fail("No logs found");
+      }
     },
   );
 }

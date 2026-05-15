@@ -11,16 +11,16 @@ export type EventFields<
 
 export class ProgramUtils<I extends Idl> extends TransactionSender {
   public readonly program: anchor.Program<I>;
-  private readonly tulipConfigEventFilter: web3.PublicKey;
+  private readonly configEventFilter: web3.PublicKey;
 
   constructor(
     connection: web3.Connection,
     program: anchor.Program<I>,
-    tulipConfig: web3.PublicKey,
+    configFilter: web3.PublicKey,
   ) {
     super(connection);
     this.program = program;
-    this.tulipConfigEventFilter = tulipConfig;
+    this.configEventFilter = configFilter;
   }
 
   protected nativeMint(tokenProgram: web3.PublicKey): web3.PublicKey {
@@ -96,10 +96,9 @@ export class ProgramUtils<I extends Idl> extends TransactionSender {
           };
 
           // Only listen to events for this config instance.
-          // Ignore events with other configs.
           if (
-            data.config?.equals(this.tulipConfigEventFilter) ||
-            data.tulipConfig?.equals(this.tulipConfigEventFilter)
+            data.config?.equals(this.configEventFilter) ||
+            data.tulipConfig?.equals(this.configEventFilter)
           ) {
             events.push(event);
           }
