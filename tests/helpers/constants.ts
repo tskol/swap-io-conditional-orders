@@ -1,5 +1,8 @@
-export const PROGRAM_ID = "82qR3ftARSeXPBg9wnVrsLsAepfvimBUCPdNuiV9unhV";
-export const PYTH_ENDPOINT = "https://hermes.pyth.network";
+export const PROGRAM_ID =
+  process.env.ORDO_PROGRAM_ID ??
+  "EfsKVSxQxwoR9NpZfjgWuuwpbbF14BQgrh3rt4kAs181";
+export const PYTH_ENDPOINT =
+  process.env.PYTH_ENDPOINT ?? "https://hermes.pyth.network";
 
 export const GLOBAL_CONFIG_SIZE = 2224;
 export const ORDER_SIZE = 536;

@@ -1,25 +1,20 @@
 import * as anchor from "@coral-xyz/anchor";
 import { web3 } from "@coral-xyz/anchor";
-import {
-  PublicKey,
-} from "@solana/web3.js";
 import { OrdoHelper } from "../tests/helpers/ordo";
-import { BN } from "@coral-xyz/anchor";
-
-const COMMITMENT: web3.Commitment = 'confirmed';
-
-
-const GLOBAL_CONFIG = new PublicKey("G5t5rvSjYPFfNWKjUvJ5eVU9xrb4SdhSkkiBFQRfUBNR");
-const ORDER = new PublicKey("6fUihjMykLWRYwsh9DyznQ3PsJNy4FzWD4mDKXQs3sDi");
-
-const INPUT_AMOUNT = new BN(1000000000);
+import {
+  requirePublicKey,
+  SCRIPT_COMMITMENT,
+  SCRIPT_GLOBAL_CONFIG,
+  SCRIPT_INPUT_AMOUNT,
+  SCRIPT_ORDER,
+} from "./config";
 
 async function main() {
     const envProvider = anchor.AnchorProvider.env();
-    const connection = new web3.Connection(envProvider.connection.rpcEndpoint, { commitment: COMMITMENT });
+    const connection = new web3.Connection(envProvider.connection.rpcEndpoint, { commitment: SCRIPT_COMMITMENT });
     const provider = new anchor.AnchorProvider(connection, envProvider.wallet, {
-        commitment: COMMITMENT,
-        preflightCommitment: COMMITMENT,
+        commitment: SCRIPT_COMMITMENT,
+        preflightCommitment: SCRIPT_COMMITMENT,
     });
     anchor.setProvider(provider);
 
@@ -27,26 +22,27 @@ async function main() {
     console.log("Execute script from wallet: ", user.publicKey.toBase58());
 
     const ordoHelper = new OrdoHelper(provider);
-    ordoHelper.setGlobalConfig(GLOBAL_CONFIG);
+    ordoHelper.setGlobalConfig(SCRIPT_GLOBAL_CONFIG ?? requirePublicKey("ORDO_GLOBAL_CONFIG"));
+    const order = SCRIPT_ORDER ?? requirePublicKey("ORDO_ORDER");
 
-    const minOutputAmount = await ordoHelper.calcOrderMinOutputAmount(INPUT_AMOUNT, ORDER);
+    const minOutputAmount = await ordoHelper.calcOrderMinOutputAmount(SCRIPT_INPUT_AMOUNT, order);
 
     const { signatures } = await ordoHelper.takeOrder({
         taker: user,
-        order: ORDER,
-        inputAmount: new BN(INPUT_AMOUNT),
+        order,
+        inputAmount: SCRIPT_INPUT_AMOUNT,
         minOutputAmount: minOutputAmount,
-        tipAmountPermissionlessTaking: new BN(0),
+        tipAmountPermissionlessTaking: new anchor.BN(0),
     });
 
-    const blockhash = await connection.getLatestBlockhash(COMMITMENT);
-    await connection.confirmTransaction({ signature: signatures[0], ...blockhash }, COMMITMENT);
+    const blockhash = await connection.getLatestBlockhash(SCRIPT_COMMITMENT);
+    await connection.confirmTransaction({ signature: signatures[0], ...blockhash }, SCRIPT_COMMITMENT);
 
     console.log("Order taken: ", signatures[0]);
     if (signatures.length > 1) {
         for (let index = 1; index < signatures.length; index++) {
             const signature = signatures[index];
-            await connection.confirmTransaction({ signature, ...blockhash }, COMMITMENT);
+            await connection.confirmTransaction({ signature, ...blockhash }, SCRIPT_COMMITMENT);
             console.log(`Signature ${index + 1}: ${signature}`);
         }
     }

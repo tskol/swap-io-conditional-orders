@@ -1,21 +1,19 @@
 import * as anchor from "@coral-xyz/anchor";
 import { web3 } from "@coral-xyz/anchor";
-import {
-  PublicKey,
-} from "@solana/web3.js";
 import { OrdoHelper } from "../tests/helpers/ordo";
-
-const COMMITMENT: web3.Commitment = 'confirmed';
-
-const GLOBAL_CONFIG = new PublicKey("G5t5rvSjYPFfNWKjUvJ5eVU9xrb4SdhSkkiBFQRfUBNR");
-const ORDER = new PublicKey("6fUihjMykLWRYwsh9DyznQ3PsJNy4FzWD4mDKXQs3sDi");
+import {
+  requirePublicKey,
+  SCRIPT_COMMITMENT,
+  SCRIPT_GLOBAL_CONFIG,
+  SCRIPT_ORDER,
+} from "./config";
 
 async function main() {
     const envProvider = anchor.AnchorProvider.env();
-    const connection = new web3.Connection(envProvider.connection.rpcEndpoint, { commitment: COMMITMENT });
+    const connection = new web3.Connection(envProvider.connection.rpcEndpoint, { commitment: SCRIPT_COMMITMENT });
     const provider = new anchor.AnchorProvider(connection, envProvider.wallet, {
-        commitment: COMMITMENT,
-        preflightCommitment: COMMITMENT,
+        commitment: SCRIPT_COMMITMENT,
+        preflightCommitment: SCRIPT_COMMITMENT,
     });
     anchor.setProvider(provider);
 
@@ -23,15 +21,15 @@ async function main() {
     console.log("Execute script from wallet: ", user.publicKey.toBase58());
 
     const ordoHelper = new OrdoHelper(provider);
-    ordoHelper.setGlobalConfig(GLOBAL_CONFIG);
+    ordoHelper.setGlobalConfig(SCRIPT_GLOBAL_CONFIG ?? requirePublicKey("ORDO_GLOBAL_CONFIG"));
 
     const { signature } = await ordoHelper.closeOrder({
         closer: user,
-        order: ORDER,
+        order: SCRIPT_ORDER ?? requirePublicKey("ORDO_ORDER"),
     });
 
-    const blockhash = await connection.getLatestBlockhash(COMMITMENT);
-    await connection.confirmTransaction({ signature, ...blockhash }, COMMITMENT);
+    const blockhash = await connection.getLatestBlockhash(SCRIPT_COMMITMENT);
+    await connection.confirmTransaction({ signature, ...blockhash }, SCRIPT_COMMITMENT);
 
     console.log("Order closed: ", signature);
 }
