@@ -3,11 +3,14 @@ import * as spl from "@solana/spl-token";
 import { web3, BN } from "@coral-xyz/anchor";
 import { expect } from "chai";
 import { OrdoHelper } from "./helpers/ordo";
+import { expectRejects } from "./helpers/utils";
 import {
-  airdrop,
-  createMintWithInitialBalance,
-  expectRejects,
-} from "./helpers/utils";
+  bootstrapOrderFlow,
+  createFlowActors,
+  createFlowProvider,
+  ensureLocalValidator,
+  STABLE_PRICE_FEED,
+} from "./helpers/flow-setup";
 import {
   OrderStatus,
   OrderType,
@@ -16,30 +19,18 @@ import {
   UpdateOrderMode,
 } from "./helpers/constants";
 
-export const STABLE_PRICE_FEED =
-  "0x8b1e8e689fbb95ece35155a8b42cb9f1b14208a2f6507866a9a90e8dc955289a";
-
-describe.only("Safe cancellation and full unwind", () => {
-  const commitment: web3.Commitment = "confirmed";
-  const envProvider = anchor.AnchorProvider.env();
-  const connection = new web3.Connection(
-    envProvider.connection.rpcEndpoint,
-    commitment,
-  );
-  const provider = new anchor.AnchorProvider(connection, envProvider.wallet, {
-    commitment,
-    preflightCommitment: commitment,
-  });
-  anchor.setProvider(provider);
-
-  const payer = web3.Keypair.generate();
-  const payerWallet = new anchor.Wallet(payer);
-  const maker = web3.Keypair.generate();
-  const makerWallet = new anchor.Wallet(maker);
-  const taker = web3.Keypair.generate();
-  const takerWallet = new anchor.Wallet(taker);
-  const tokenCreator = web3.Keypair.generate();
-  const tokenCreatorWallet = new anchor.Wallet(tokenCreator);
+describe("Safe cancellation and full unwind", () => {
+  const { connection, provider } = createFlowProvider();
+  const {
+    payer,
+    payerWallet,
+    maker,
+    makerWallet,
+    taker,
+    takerWallet,
+    tokenCreator,
+    tokenCreatorWallet,
+  } = createFlowActors();
 
   const ordoHelper = new OrdoHelper(provider);
 
@@ -47,102 +38,24 @@ describe.only("Safe cancellation and full unwind", () => {
   let outputMint: web3.PublicKey;
 
   before(async function () {
-    // Check if validator is running
-    try {
-      await connection.getVersion();
-    } catch (error: any) {
-      if (
-        error.message?.includes("ECONNREFUSED") ||
-        error.message?.includes("fetch failed")
-      ) {
-        throw new Error(
-          "Local Solana validator is not running. " +
-            "Please start it with: solana-test-validator " +
-            "or use 'anchor test' which handles this automatically.",
-        );
-      }
-      throw error;
-    }
-    await airdrop(payer.publicKey, 10 * web3.LAMPORTS_PER_SOL);
-    await airdrop(maker.publicKey, 10 * web3.LAMPORTS_PER_SOL);
-    await airdrop(taker.publicKey, 10 * web3.LAMPORTS_PER_SOL);
-    await airdrop(tokenCreator.publicKey, 10 * web3.LAMPORTS_PER_SOL);
-
-    const { mint: inputMintPubkey, recipientTokenAccount: makerInputAta } =
-      await createMintWithInitialBalance({
-        connection: provider.connection,
-        payer: tokenCreator,
-        recipient: maker.publicKey,
-        decimals: 6,
-        initialBalance: 1000000000000,
-      });
-    const { mint: outputMintPubkey, recipientTokenAccount: takerOutputAta } =
-      await createMintWithInitialBalance({
-        connection: provider.connection,
-        payer: tokenCreator,
-        recipient: taker.publicKey,
-        decimals: 6,
-        initialBalance: 1000000000000,
-      });
-    inputMint = inputMintPubkey;
-    outputMint = outputMintPubkey;
-
-    const takerInputAta = await spl.createAssociatedTokenAccountIdempotent(
-      provider.connection,
-      tokenCreator,
-      inputMint,
-      taker.publicKey,
-    );
-    const makerOutputAta = await spl.createAssociatedTokenAccountIdempotent(
-      provider.connection,
-      tokenCreator,
-      outputMint,
-      maker.publicKey,
-    );
-
-    const inputAmount = 100000000000;
-    const outputAmount = 100000000000;
-
-    await spl.transfer(
-      provider.connection,
+    await ensureLocalValidator(connection);
+    const flow = await bootstrapOrderFlow({
+      provider,
+      ordoHelper,
+      payer,
+      payerWallet,
       maker,
-      makerInputAta,
-      takerInputAta,
-      maker.publicKey,
-      inputAmount,
-    );
-    await spl.transfer(
-      provider.connection,
       taker,
-      takerOutputAta,
-      makerOutputAta,
-      taker.publicKey,
-      outputAmount,
-    );
-
-    await ordoHelper.initializeGlobalConfig({
-      payer: payerWallet,
+      tokenCreator,
+      makerInputBalance: 1000000000000,
+      takerOutputBalance: 1000000000000,
+      seedCounterpartyBalances: {
+        inputAmount: 100000000000,
+        outputAmount: 100000000000,
+      },
     });
-
-    await ordoHelper.initializeVault({
-      payer: payerWallet,
-      mint: inputMint,
-    });
-    await ordoHelper.initializeVault({
-      payer: payerWallet,
-      mint: outputMint,
-    });
-
-    await ordoHelper.initializeOraclePool({
-      payer: payerWallet,
-      mint: inputMint,
-      feedId: STABLE_PRICE_FEED,
-    });
-    await ordoHelper.initializeOraclePool({
-      payer: payerWallet,
-      mint: outputMint,
-      feedId: STABLE_PRICE_FEED,
-    });
+    inputMint = flow.inputMint;
+    outputMint = flow.outputMint;
   });
 
   async function calcMinOutputAmount(
