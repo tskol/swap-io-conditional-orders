@@ -2,6 +2,10 @@
   "name": "swap-io-conditional-orders",
   "version": "1.0.0",
   "license": "ISC",
+  "scripts": {
+    "build:program": "cargo build-sbf --manifest-path programs/ordo/Cargo.toml --tools-version v1.39",
+    "check:ts": "tsc -p tsconfig.json --noEmit"
+  },
   "devDependencies": {
     "@coral-xyz/anchor": "^0.29.0",
     "@pythnetwork/price-service-client": "^1.10.0",

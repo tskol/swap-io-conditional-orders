@@ -226,8 +226,11 @@ yarn install
 From repository root:
 
 ```bash
-anchor build
+yarn build:program
 ```
+
+If `anchor build` reports the known stack-offset toolchain warning, use the
+script above to produce the program artifact directly.
 
 ### Run tests
 
@@ -238,7 +241,7 @@ From repository root:
 surfpool start
 
 # 2) Deploy the programs to the Surfpool localnet
-anchor build
+yarn build:program
 anchor deploy --provider.cluster localnet
 
 # 3) Run tests against Surfpool localnet
@@ -277,7 +280,7 @@ Scripts live in:
 The Anchor IDL for this program is generated into `target/idl/ordo.json`.
 
 ```bash
-anchor build
+yarn build:program
 ls -la target/idl/
 ```
 
