@@ -1,22 +1,16 @@
 import * as anchor from "@coral-xyz/anchor";
 import * as spl from "@solana/spl-token";
-import * as memo from "@solana/spl-memo";
 import IDL from "../../target/idl/ordo.json";
 import { BN, web3 } from "@coral-xyz/anchor";
 import { SYSVAR_INSTRUCTIONS_PUBKEY } from "@solana/web3.js";
 import { Ordo } from "../../target/types/ordo";
 import { findLargestTokenAccount } from "./utils";
-import {
-  Price,
-  PriceServiceConnection,
-} from "@pythnetwork/price-service-client";
-import {
-  InstructionWithEphemeralSigners,
-  // PythSolanaReceiver,
-} from "@pythnetwork/pyth-solana-receiver";
+import { Price, PriceServiceConnection } from "@pythnetwork/price-service-client";
 import { TransactionSender } from "./transaction-sender";
-import { ProgramUtils } from "./program-utils";
 import { Wallet } from "@coral-xyz/anchor";
+import { findMintScopedPda, findPdaAuthority } from "./ordo/pdas";
+import { executeStopLossOrder, encodeFeedId } from "./ordo/stop-loss";
+import { getMintTokenProgram, getOwnerAta, getTokenPairPrograms } from "./ordo/token-context";
 import {
   GLOBAL_CONFIG_SIZE,
   ORDER_SIZE,
@@ -59,17 +53,30 @@ export class OrdoHelper extends TransactionSender {
     });
   }
 
+  private resolveGlobalConfig(globalConfig?: web3.PublicKey): web3.PublicKey {
+    return globalConfig ?? this.globalConfig;
+  }
+
+  private async getOrderMintPrograms(orderAccount: OrderAccount): Promise<{
+    inputTokenProgram: web3.PublicKey | undefined;
+    outputTokenProgram: web3.PublicKey | undefined;
+  }> {
+    return getTokenPairPrograms({
+      connection: this.provider.connection,
+      inputMint: orderAccount.inputMint,
+      outputMint: orderAccount.outputMint,
+    });
+  }
+
   async getPdaAuthority(
     globalConfig?: web3.PublicKey,
   ): Promise<{ pdaAuthority: web3.PublicKey; bump: number }> {
-    const globalConfigPubkey = globalConfig ?? this.globalConfig;
-    const [pdaAuthority, bump] = web3.PublicKey.findProgramAddressSync(
-      [
-        anchor.utils.bytes.utf8.encode(GLOBAL_AUTH_SEED),
-        globalConfigPubkey.toBuffer(),
-      ],
-      this.program.programId,
-    );
+    const globalConfigPubkey = this.resolveGlobalConfig(globalConfig);
+    const [pdaAuthority, bump] = findPdaAuthority({
+      programId: this.program.programId,
+      seed: GLOBAL_AUTH_SEED,
+      globalConfig: globalConfigPubkey,
+    });
     return { pdaAuthority, bump };
   }
 
@@ -77,15 +84,13 @@ export class OrdoHelper extends TransactionSender {
     mint: web3.PublicKey,
     globalConfig?: web3.PublicKey,
   ): Promise<{ vault: web3.PublicKey; bump: number }> {
-    const globalConfigPubkey = globalConfig ?? this.globalConfig;
-    const [vault, bump] = web3.PublicKey.findProgramAddressSync(
-      [
-        anchor.utils.bytes.utf8.encode(ESCROW_VAULT_SEED),
-        globalConfigPubkey.toBuffer(),
-        mint.toBuffer(),
-      ],
-      this.program.programId,
-    );
+    const globalConfigPubkey = this.resolveGlobalConfig(globalConfig);
+    const [vault, bump] = findMintScopedPda({
+      programId: this.program.programId,
+      seed: ESCROW_VAULT_SEED,
+      globalConfig: globalConfigPubkey,
+      mint,
+    });
     return { vault, bump };
   }
 
@@ -93,15 +98,13 @@ export class OrdoHelper extends TransactionSender {
     mint: web3.PublicKey,
     globalConfig?: web3.PublicKey,
   ): Promise<{ feeVault: web3.PublicKey; bump: number }> {
-    const globalConfigPubkey = globalConfig ?? this.globalConfig;
-    const [feeVault, bump] = web3.PublicKey.findProgramAddressSync(
-      [
-        anchor.utils.bytes.utf8.encode(FEE_VAULT_SEED),
-        globalConfigPubkey.toBuffer(),
-        mint.toBuffer(),
-      ],
-      this.program.programId,
-    );
+    const globalConfigPubkey = this.resolveGlobalConfig(globalConfig);
+    const [feeVault, bump] = findMintScopedPda({
+      programId: this.program.programId,
+      seed: FEE_VAULT_SEED,
+      globalConfig: globalConfigPubkey,
+      mint,
+    });
     return { feeVault, bump };
   }
 
@@ -109,15 +112,13 @@ export class OrdoHelper extends TransactionSender {
     mint: web3.PublicKey,
     globalConfig?: web3.PublicKey,
   ): Promise<{ oraclePool: web3.PublicKey; bump: number }> {
-    const globalConfigPubkey = globalConfig ?? this.globalConfig;
-    const [oraclePool, bump] = web3.PublicKey.findProgramAddressSync(
-      [
-        anchor.utils.bytes.utf8.encode(ORACLE_POOL_SEED),
-        globalConfigPubkey.toBuffer(),
-        mint.toBuffer(),
-      ],
-      this.program.programId,
-    );
+    const globalConfigPubkey = this.resolveGlobalConfig(globalConfig);
+    const [oraclePool, bump] = findMintScopedPda({
+      programId: this.program.programId,
+      seed: ORACLE_POOL_SEED,
+      globalConfig: globalConfigPubkey,
+      mint,
+    });
     return { oraclePool, bump };
   }
 
@@ -202,16 +203,17 @@ export class OrdoHelper extends TransactionSender {
     vault: web3.PublicKey;
     feeVault: web3.PublicKey;
   }> {
-    const globalConfig = args.globalConfig ?? this.globalConfig;
+    const globalConfig = this.resolveGlobalConfig(args.globalConfig);
 
     const { pdaAuthority } = await this.getPdaAuthority(globalConfig);
 
     const { vault } = await this.getVault(args.mint, globalConfig);
     const { feeVault } = await this.getFeeVault(args.mint, globalConfig);
 
-    const tokenProgram = (
-      await this.provider.connection.getAccountInfo(args.mint)
-    )?.owner;
+    const tokenProgram = await getMintTokenProgram(
+      this.provider.connection,
+      args.mint,
+    );
     const ix = await this.program.methods
       .initializeVault()
       .accounts({
@@ -239,7 +241,7 @@ export class OrdoHelper extends TransactionSender {
     signature: string;
     oraclePool: web3.PublicKey;
   }> {
-    const globalConfig = args.globalConfig ?? this.globalConfig;
+    const globalConfig = this.resolveGlobalConfig(args.globalConfig);
 
     const { oraclePool } = await this.getOraclePool(args.mint);
     const ix = await this.program.methods
@@ -264,7 +266,7 @@ export class OrdoHelper extends TransactionSender {
   }): Promise<{
     signature: string;
   }> {
-    const globalConfig = args.globalConfig ?? this.globalConfig;
+    const globalConfig = this.resolveGlobalConfig(args.globalConfig);
 
     const valueSize = args.value.length;
     if (valueSize > UPDATE_GLOBAL_CONFIG_BYTE_SIZE) {
@@ -340,22 +342,20 @@ export class OrdoHelper extends TransactionSender {
     );
 
     // Get token programs
-    const inputMintInfo = await this.provider.connection.getAccountInfo(
-      args.inputMint,
+    const { inputTokenProgram, outputTokenProgram } = await getTokenPairPrograms(
+      {
+        connection: this.provider.connection,
+        inputMint: args.inputMint,
+        outputMint: args.outputMint,
+      },
     );
-    const outputMintInfo = await this.provider.connection.getAccountInfo(
-      args.outputMint,
-    );
-    const inputTokenProgram = inputMintInfo?.owner;
-    const outputTokenProgram = outputMintInfo?.owner;
 
     // Get maker ATA
-    const makerAta = spl.getAssociatedTokenAddressSync(
-      args.inputMint,
-      args.maker.publicKey,
-      false,
-      inputTokenProgram,
-    );
+    const makerAta = getOwnerAta({
+      mint: args.inputMint,
+      owner: args.maker.publicKey,
+      tokenProgram: inputTokenProgram,
+    });
 
     const ixs: anchor.web3.TransactionInstruction[] = [];
 
@@ -482,7 +482,7 @@ export class OrdoHelper extends TransactionSender {
   }): Promise<{
     signatures: string[];
   }> {
-    const globalConfig = args.globalConfig ?? this.globalConfig;
+    const globalConfig = this.resolveGlobalConfig(args.globalConfig);
     const { pdaAuthority } = await this.getPdaAuthority(globalConfig);
 
     const orderAccount = await this.getOrderAccount(args.order);
@@ -513,145 +513,76 @@ export class OrdoHelper extends TransactionSender {
     const { oraclePool: outputOraclePool } =
       await this.getOraclePool(outputMint);
 
-    const inputMintInfo =
-      await this.provider.connection.getAccountInfo(inputMint);
-    const outputMintInfo =
-      await this.provider.connection.getAccountInfo(outputMint);
-    const inputTokenProgram = inputMintInfo?.owner;
-    const outputTokenProgram = outputMintInfo?.owner;
+    const { inputTokenProgram, outputTokenProgram } =
+      await this.getOrderMintPrograms(orderAccount);
 
-    const takerInputAta = spl.getAssociatedTokenAddressSync(
-      inputMint,
-      args.taker.publicKey,
-      false,
-      inputTokenProgram,
-    );
-    const takerOutputAta = spl.getAssociatedTokenAddressSync(
-      outputMint,
-      args.taker.publicKey,
-      false,
-      outputTokenProgram,
-    );
-    const makerOutputAta = spl.getAssociatedTokenAddressSync(
-      outputMint,
-      maker,
-      false,
-      outputTokenProgram,
-    );
+    const takerInputAta = getOwnerAta({
+      mint: inputMint,
+      owner: args.taker.publicKey,
+      tokenProgram: inputTokenProgram,
+    });
+    const takerOutputAta = getOwnerAta({
+      mint: outputMint,
+      owner: args.taker.publicKey,
+      tokenProgram: outputTokenProgram,
+    });
+    const makerOutputAta = getOwnerAta({
+      mint: outputMint,
+      owner: maker,
+      tokenProgram: outputTokenProgram,
+    });
 
     if (orderAccount.orderType === OrderType.LimitSL) {
-      const PythSolanaReceiver = (
-        await import("@pythnetwork/pyth-solana-receiver")
-      ).PythSolanaReceiver;
-      const pyth = new PythSolanaReceiver({
-        connection: this.provider.connection,
-        wallet: args.taker,
-      });
-
       const inputOraclePoolAccount = await this.getOraclePoolAccount(inputMint);
       const outputOraclePoolAccount =
         await this.getOraclePoolAccount(outputMint);
 
-      const inputFeedId =
-        "0x" +
-        inputOraclePoolAccount.oracleFeedId
-          .map((x) => {
-            let hex = x.toString(16);
-            if (hex.length < 2) {
-              hex = "0" + hex;
-            }
-            return hex;
-          })
-          .join("");
-      const outputFeedId =
-        "0x" +
-        outputOraclePoolAccount.oracleFeedId
-          .map((x) => {
-            let hex = x.toString(16);
-            if (hex.length < 2) {
-              hex = "0" + hex;
-            }
-            return hex;
-          })
-          .join("");
+      const inputFeedId = encodeFeedId(inputOraclePoolAccount.oracleFeedId);
+      const outputFeedId = encodeFeedId(outputOraclePoolAccount.oracleFeedId);
 
-      const priceUpdateData = await this.pythConnection.getLatestVaas([
+      const signatures = await executeStopLossOrder({
+        connection: this.provider.connection,
+        taker: args.taker,
+        pythConnection: this.pythConnection,
         inputFeedId,
         outputFeedId,
-      ]);
-      const builder = pyth.newTransactionBuilder({ closeUpdateAccounts: true });
-      await builder.addPostPriceUpdates(priceUpdateData);
-
-      await builder.addPriceConsumerInstructions(
-        async (
-          getPriceUpdateAccount: (priceFeedId: string) => web3.PublicKey,
-        ) => {
-          const inputPriceUpdate = getPriceUpdateAccount(inputFeedId);
-          const outputPriceUpdate = getPriceUpdateAccount(outputFeedId);
-          return [
-            {
-              instruction: await this.program.methods
-                .takeOrder(
-                  args.inputAmount,
-                  args.minOutputAmount,
-                  args.tipAmountPermissionlessTaking,
-                )
-                .accounts({
-                  taker: args.taker.publicKey,
-                  maker,
-                  globalConfig,
-                  pdaAuthority,
-                  order: args.order,
-                  parentOrder:
-                    parentOrder.toBase58() == web3.PublicKey.default.toBase58()
-                      ? null
-                      : parentOrder,
-                  brotherOrder: brotherOrder ? brotherOrder : null,
-                  inputMint,
-                  outputMint,
-                  inputVault,
-                  outputVault,
-                  outputFeeVault,
-                  outputOraclePool,
-                  inputOraclePool,
-                  inputPriceUpdate: inputPriceUpdate,
-                  outputPriceUpdate: outputPriceUpdate,
-                  takerInputAta,
-                  takerOutputAta,
-                  intermediaryOutputTokenAccount: null,
-                  makerOutputAta,
-                  sysvarInstructions: SYSVAR_INSTRUCTIONS_PUBKEY,
-                  // expressRelay: EXPRESS_RELAY_ID,
-                  // expressRelayMetadata: EXPRESS_RELAY_METADATA_PUBKEY,
-                  // permission: null,
-                  // configRouter: EXPRESS_RELAY_CONFIG_ROUTER_PUBKEY,
-                  inputTokenProgram,
-                  outputTokenProgram,
-                })
-                .instruction(),
-              signers: [],
-            },
-          ];
-        },
-      );
-
-      const txs = await builder.buildVersionedTransactions({});
-
-      const signatures = [];
-      for (const tx of txs) {
-        tx.tx.sign(tx.signers);
-      }
-
-      const signedTxs = await args.taker.signAllTransactions(
-        txs.map((t) => t.tx),
-      );
-
-      for (const signedTx of signedTxs) {
-        const signature = await this.connection.sendTransaction(signedTx);
-        const blockhash = await this.connection.getLatestBlockhash();
-        await this.connection.confirmTransaction({ signature, ...blockhash });
-        signatures.push(signature);
-      }
+        buildInstruction: async (inputPriceUpdate, outputPriceUpdate) =>
+          this.program.methods
+            .takeOrder(
+              args.inputAmount,
+              args.minOutputAmount,
+              args.tipAmountPermissionlessTaking,
+            )
+            .accounts({
+              taker: args.taker.publicKey,
+              maker,
+              globalConfig,
+              pdaAuthority,
+              order: args.order,
+              parentOrder:
+                parentOrder.toBase58() == web3.PublicKey.default.toBase58()
+                  ? null
+                  : parentOrder,
+              brotherOrder: brotherOrder ? brotherOrder : null,
+              inputMint,
+              outputMint,
+              inputVault,
+              outputVault,
+              outputFeeVault,
+              outputOraclePool,
+              inputOraclePool,
+              inputPriceUpdate,
+              outputPriceUpdate,
+              takerInputAta,
+              takerOutputAta,
+              intermediaryOutputTokenAccount: null,
+              makerOutputAta,
+              sysvarInstructions: SYSVAR_INSTRUCTIONS_PUBKEY,
+              inputTokenProgram,
+              outputTokenProgram,
+            })
+            .instruction(),
+      });
 
       return { signatures };
     } else {
@@ -707,7 +638,7 @@ export class OrdoHelper extends TransactionSender {
   }): Promise<{
     signature: string;
   }> {
-    const globalConfig = args.globalConfig ?? this.globalConfig;
+    const globalConfig = this.resolveGlobalConfig(args.globalConfig);
     const { pdaAuthority } = await this.getPdaAuthority(globalConfig);
 
     const orderAccount = await this.getOrderAccount(args.order);
@@ -726,38 +657,30 @@ export class OrdoHelper extends TransactionSender {
     );
 
     // Get token programs
-    const inputMintInfo =
-      await this.provider.connection.getAccountInfo(inputMint);
-    const outputMintInfo =
-      await this.provider.connection.getAccountInfo(outputMint);
-    const inputTokenProgram = inputMintInfo?.owner;
-    const outputTokenProgram = outputMintInfo?.owner;
+    const { inputTokenProgram, outputTokenProgram } =
+      await this.getOrderMintPrograms(orderAccount);
 
     // Get maker ATAs
-    const makerInputAta = spl.getAssociatedTokenAddressSync(
-      inputMint,
-      maker,
-      false,
-      inputTokenProgram,
-    );
-    const makerOutputAta = spl.getAssociatedTokenAddressSync(
-      outputMint,
-      maker,
-      false,
-      outputTokenProgram,
-    );
-    const closerInputAta = spl.getAssociatedTokenAddressSync(
-      inputMint,
-      args.closer.publicKey,
-      false,
-      inputTokenProgram,
-    );
-    const closerOutputAta = spl.getAssociatedTokenAddressSync(
-      outputMint,
-      args.closer.publicKey,
-      false,
-      outputTokenProgram,
-    );
+    const makerInputAta = getOwnerAta({
+      mint: inputMint,
+      owner: maker,
+      tokenProgram: inputTokenProgram,
+    });
+    const makerOutputAta = getOwnerAta({
+      mint: outputMint,
+      owner: maker,
+      tokenProgram: outputTokenProgram,
+    });
+    const closerInputAta = getOwnerAta({
+      mint: inputMint,
+      owner: args.closer.publicKey,
+      tokenProgram: inputTokenProgram,
+    });
+    const closerOutputAta = getOwnerAta({
+      mint: outputMint,
+      owner: args.closer.publicKey,
+      tokenProgram: outputTokenProgram,
+    });
 
     // Determine if child orders are needed (LimitParent = 1)
     const tpChildOrderPubkey =
