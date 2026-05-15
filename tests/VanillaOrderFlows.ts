@@ -17,6 +17,9 @@ import {
   UpdateGlobalConfigMode,
   UpdateOrderMode,
 } from "./support/ordo-constants";
+import { ensureChildFlowTokenAccounts } from "./support/ordo/child-flow";
+import { createExecutableVanillaFillOrder } from "./support/ordo/fill-flow";
+import { waitForOrderExpiry } from "./support/ordo/close-flow";
 
 describe("Type A Limit Orders", () => {
   const { connection, provider } = createFlowProvider();
@@ -226,44 +229,25 @@ describe("Type A Limit Orders", () => {
     }
 
     before(async () => {
-      await spl.createAssociatedTokenAccountIdempotent(
-        provider.connection,
+      await ensureChildFlowTokenAccounts({
+        connection: provider.connection,
         taker,
-        inputMint,
-        taker.publicKey,
-      );
-
-      await spl.createAssociatedTokenAccountIdempotent(
-        provider.connection,
         maker,
+        inputMint,
         outputMint,
-        maker.publicKey,
-      );
+      });
     });
 
     beforeEach(async () => {
-      const { signature, order: orderPubkey } = await ordoHelper.createOrder({
+      order = await createExecutableVanillaFillOrder({
+        ordoHelper,
         maker: makerWallet,
-        inputMint: inputMint,
-        outputMint: outputMint,
+        taker,
+        inputMint,
+        outputMint,
         inputAmount: orderInputAmount,
         outputAmount: orderOutputAmount,
-        orderType: OrderType.Vanilla,
-        activeDurationSeconds: activeDurationSeconds,
-      });
-      order = orderPubkey;
-
-      await ordoHelper.updateOrder({
-        maker: makerWallet,
-        order: order,
-        mode: UpdateOrderMode.UpdatePermissionless,
-        value: new BN(1).toBuffer(),
-      });
-      await ordoHelper.updateOrder({
-        maker: makerWallet,
-        order: order,
-        mode: UpdateOrderMode.UpdateCounterparty,
-        value: taker.publicKey.toBuffer(),
+        activeDurationSeconds,
       });
     });
 
@@ -677,8 +661,7 @@ describe("Type A Limit Orders", () => {
         value: Array.from(taker.publicKey.toBuffer()),
       });
 
-      const waitMs = (activeDurationSeconds.toNumber() + 1) * 1000;
-      await new Promise((resolve) => setTimeout(resolve, waitMs));
+      await waitForOrderExpiry(activeDurationSeconds);
 
       await expectRejects(
         ordoHelper.takeOrder({
@@ -842,43 +825,25 @@ describe("Type A Limit Orders", () => {
     const orderOutputAmount = new BN(200000000000);
 
     before(async () => {
-      await spl.createAssociatedTokenAccountIdempotent(
-        provider.connection,
+      await ensureChildFlowTokenAccounts({
+        connection: provider.connection,
         taker,
-        inputMint,
-        taker.publicKey,
-      );
-
-      await spl.createAssociatedTokenAccountIdempotent(
-        provider.connection,
         maker,
+        inputMint,
         outputMint,
-        maker.publicKey,
-      );
+      });
     });
 
     beforeEach(async () => {
-      const { signature, order: orderPubkey } = await ordoHelper.createOrder({
+      order = await createExecutableVanillaFillOrder({
+        ordoHelper,
         maker: makerWallet,
-        inputMint: inputMint,
-        outputMint: outputMint,
+        taker,
+        inputMint,
+        outputMint,
         inputAmount: orderInputAmount,
         outputAmount: orderOutputAmount,
-        orderType: OrderType.Vanilla,
-      });
-      order = orderPubkey;
-
-      await ordoHelper.updateOrder({
-        maker: makerWallet,
-        order: order,
-        mode: UpdateOrderMode.UpdatePermissionless,
-        value: new BN(1).toBuffer(),
-      });
-      await ordoHelper.updateOrder({
-        maker: makerWallet,
-        order: order,
-        mode: UpdateOrderMode.UpdateCounterparty,
-        value: taker.publicKey.toBuffer(),
+        activeDurationSeconds: new BN(0),
       });
     });
 
