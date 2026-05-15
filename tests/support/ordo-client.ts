@@ -10,6 +10,7 @@ import { TransactionSender } from "./tx-runner";
 import { Wallet } from "@coral-xyz/anchor";
 import { findMintScopedPda, findPdaAuthority } from "./ordo/pdas";
 import { executeStopLossOrder, encodeFeedId } from "./ordo/stop-loss";
+import { calcMinOutputAmountFromOrder } from "./ordo/order-math";
 import {
   getMintTokenProgram,
   getOwnerAta,
@@ -731,10 +732,6 @@ export class OrdoHelper extends TransactionSender {
     order: web3.PublicKey,
   ): Promise<BN> {
     const orderAccount = await this.getOrderAccount(order);
-    const numerator = new BN(inputAmount).mul(
-      orderAccount.expectedOutputAmount,
-    );
-    const denominator = orderAccount.initialInputAmount;
-    return numerator.add(denominator).sub(new BN(1)).div(denominator);
+    return calcMinOutputAmountFromOrder(inputAmount, orderAccount);
   }
 }

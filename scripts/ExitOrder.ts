@@ -1,24 +1,8 @@
-import {
-  requirePublicKey,
-  SCRIPT_ORDER,
-} from "./config";
-import {
-  applyScriptGlobalConfig,
-  confirmSignature,
-  createScriptContext,
-} from "./runtime";
+import { exitConfiguredOrder } from "./order-actions";
 
 async function main() {
-    const { connection, wallet, ordoHelper } = createScriptContext();
+    const { wallet, signature } = await exitConfiguredOrder();
     console.log("Execute script from wallet: ", wallet.publicKey.toBase58());
-    applyScriptGlobalConfig(ordoHelper);
-
-    const { signature } = await ordoHelper.closeOrder({
-        closer: wallet,
-        order: SCRIPT_ORDER ?? requirePublicKey("ORDO_ORDER"),
-    });
-    await confirmSignature(connection, signature);
-
     console.log("Order closed: ", signature);
 }
 
