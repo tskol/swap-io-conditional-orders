@@ -54,8 +54,9 @@ pub(super) fn validate_child_order_accounts(ctx: &Context<ExecuteOrder>) -> Resu
             return err!(OrdoError::InvalidAccount);
         };
 
-        // If the "brother" child wasn't created, allow it to be omitted.
-        if brother_key != Pubkey::default() {
+        if brother_key == Pubkey::default() {
+            require!(ctx.accounts.brother_order.is_none(), OrdoError::InvalidAccount);
+        } else {
             require!(
                 ctx.accounts
                     .brother_order

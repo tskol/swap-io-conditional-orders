@@ -192,6 +192,7 @@ fn take_child_order_accounting_marks_brother_filled_after_child_fill() {
     parent_order.available_child_input_amount = 1_000;
 
     let brother_key = Pubkey::new_unique();
+    parent_order.sl_child_order = brother_key;
     let owner = crate::ID;
     let mut lamports = 0;
     let mut data = zero_copy_account_data(&brother_order);
@@ -231,4 +232,53 @@ fn take_child_order_accounting_marks_brother_filled_after_child_fill() {
         brother_loader.load().unwrap().status,
         OrderStatus::Filled as u8
     );
+}
+
+#[test]
+fn take_child_order_accounting_ignores_supplied_brother_when_parent_has_no_sibling_child() {
+    let mut global_config = GlobalConfig::default();
+    let mut parent_order = active_order();
+    let mut child_order = active_order();
+    let brother_order = active_order();
+    child_order.order_type = OrderType::LimitTP as u8;
+    parent_order.status = OrderStatus::Filled as u8;
+    parent_order.available_child_input_amount = 1_000;
+    parent_order.sl_child_order = Pubkey::default();
+
+    let brother_key = Pubkey::new_unique();
+    let owner = crate::ID;
+    let mut lamports = 0;
+    let mut data = zero_copy_account_data(&brother_order);
+    let brother_info = AccountInfo::new(
+        &brother_key,
+        false,
+        true,
+        &mut lamports,
+        &mut data,
+        &owner,
+        false,
+        0,
+    );
+    let brother_loader = AccountLoader::<Order>::try_from(&brother_info).unwrap();
+
+    update_take_child_order_accounting_and_tips(
+        &mut global_config,
+        &mut child_order,
+        &mut parent_order,
+        Some(&brother_loader),
+        None,
+        None,
+        None,
+        None,
+        6,
+        6,
+        1_000,
+        2_000,
+        0,
+        101,
+    )
+    .unwrap();
+
+    let brother_after = brother_loader.load().unwrap();
+    assert_eq!(brother_after.status, OrderStatus::Active as u8);
 }

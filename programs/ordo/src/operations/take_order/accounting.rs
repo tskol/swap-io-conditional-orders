@@ -121,9 +121,17 @@ pub(super) fn update_take_child_order_accounting_and_tips(
 
     if parent_order.status == OrderStatus::Filled as u8 && order.status == OrderStatus::Filled as u8
     {
-        if let Some(brother_order) = brother_order {
+        let brother_key = match order.order_type {
+            value if value == OrderType::LimitTP as u8 => parent_order.sl_child_order,
+            value if value == OrderType::LimitSL as u8 => parent_order.tp_child_order,
+            _ => Pubkey::default(),
+        };
+
+        if brother_key != Pubkey::default() {
+            if let Some(brother_order) = brother_order {
             let mut brother_order = brother_order.load_mut()?;
             brother_order.status = OrderStatus::Filled as u8;
+            }
         }
     }
     Ok(())
